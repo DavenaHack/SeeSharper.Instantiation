@@ -47,7 +47,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             if (type == typeof(IDictionary) || type == typeof(IDictionary<,>) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>))
             {
-                type = typeof(Dictionary<,>).MakeGenericType(type.GetIDictionaryValueTypes()?.ToArray() ?? new[] { typeof(object), typeof(object) });
+                type = typeof(Dictionary<,>).MakeGenericType(type.GetIDictionaryKeyValueType()?.ToArray() ?? new[] { typeof(object), typeof(object) });
                 if (EnumerableInstantiator.TryInstantiateEnumerableConstructor(type, instantiateValues, InstantiatePair, out ignoredInstantiateValues, out var inits))
                     return inits;
             }

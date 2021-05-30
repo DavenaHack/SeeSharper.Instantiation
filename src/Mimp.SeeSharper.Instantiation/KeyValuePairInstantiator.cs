@@ -46,7 +46,7 @@ namespace Mimp.SeeSharper.Instantiation
             }
             var initType = instantiateValues.GetType();
             dynamic dyn = instantiateValues;
-            var types = type.GetKeyValuePairValueTypes()!.ToArray();
+            var types = type.GetKeyValuePairKeyValueType()!.ToArray();
             object? Create(object? key, object? value)
             {
                 try
@@ -134,7 +134,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             var initType = initializeValues.GetType();
             dynamic dyn = initializeValues;
-            var types = type.GetKeyValuePairValueTypes()!.ToArray();
+            var types = type.GetKeyValuePairKeyValueType()!.ToArray();
             void Initialize(object? key, object? value)
             {
                 try
