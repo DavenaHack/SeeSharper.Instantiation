@@ -41,4 +41,9 @@
     <ProjectReference Include="..\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
   </ItemGroup>
 
+  <Target Name="BuildDependencies" Condition="'$(Configuration)' == 'Debug'" BeforeTargets="BuildLink">
+    <Exec Command="dotnet build '..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj' -c $(Configuration)" />
+    <Exec Command="dotnet build '..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj' -c $(Configuration)" />
+  </Target>
+  
 </Project>
