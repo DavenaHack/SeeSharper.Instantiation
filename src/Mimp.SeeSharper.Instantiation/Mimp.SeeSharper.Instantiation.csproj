@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Mimp.SeeSharper.Instantiation\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
+    <ProjectReference Include="..\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
   </ItemGroup>
 
 </Project>
