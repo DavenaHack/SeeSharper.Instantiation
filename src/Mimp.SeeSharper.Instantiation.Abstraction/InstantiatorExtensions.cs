@@ -39,6 +39,9 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
             return instance;
         }
 
+        public static object? Construct(this IInstantiator instantiator, Type type, object? values) =>
+            instantiator.Construct(type, values, out _);
+
 
         public static T? Construct<T>(this IInstantiator instantiator, object? instantiateValues, out object? ignoredInstantiateValues, object? initializeValues, out object? ignoredInitializeValues)
         {
@@ -55,6 +58,9 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
 
             return (T?)instantiator.Construct(typeof(T), values, out ignoredValues);
         }
+
+        public static T? Construct<T>(this IInstantiator instantiator, object? values) =>
+            instantiator.Construct<T>(values, out _);
 
 
     }

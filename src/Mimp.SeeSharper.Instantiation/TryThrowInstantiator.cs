@@ -5,6 +5,10 @@ using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// <see cref="TryThrowInstantiator"/> try all <see cref="IInstantiator"/>s and if no one can instantiate the object
+    /// it will throw a exception.
+    /// </summary>
     public class TryThrowInstantiator : IInstantiator
     {
 
@@ -65,7 +69,8 @@ namespace Mimp.SeeSharper.Instantiation
                     {
                         exceptions.Add(ex);
                     }
-            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, exceptions);
+
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, exceptions);
         }
 
         public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
@@ -89,7 +94,7 @@ namespace Mimp.SeeSharper.Instantiation
             }
 
             if (instantiator is null)
-                throw new InvalidOperationException($@"""{instance}"" isn't instantiate from ""{this}""");
+                throw new InstantiationException(instance.GetType(), initializeValues, null, $@"""{instance}"" isn't instantiate from ""{this}""");
 
             instantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
         }

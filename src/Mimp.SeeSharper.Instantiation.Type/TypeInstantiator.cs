@@ -2,6 +2,7 @@
 using Mimp.SeeSharper.Reflection;
 using Mimp.SeeSharper.TypeResolver.Abstraction;
 using System;
+using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation.Type
 {
@@ -26,6 +27,7 @@ namespace Mimp.SeeSharper.Instantiation.Type
             return type.IsAssignableFrom(typeof(System.Type));
         }
 
+
         public object? Instantiate(System.Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
 			if (type is null)
@@ -38,23 +40,53 @@ namespace Mimp.SeeSharper.Instantiation.Type
                 ignoredInstantiateValues = null;
                 return type.Default();
             }
+            
             if (instantiateValues is System.Type t)
             {
                 ignoredInstantiateValues = null;
                 return t;
             }
+
             if (instantiateValues is string s)
                 try
                 {
                     ignoredInstantiateValues = null;
-                    return Resolver.ResolveRequired(s);
+                    return Resolver.ResolveSingle(s);
                 }
                 catch (Exception ex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, ex);
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
                 }
-            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues);
+
+            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
+            {
+                var i = 0;
+                object? value = null;
+                foreach (var pair in enumerable)
+                {
+                    if (i++ > 1)
+                        break;
+                    if (!string.IsNullOrEmpty(pair.Key))
+                    {
+                        i++;
+                        break;
+                    }
+                    value = pair.Value;
+                }
+                if (i < 2)
+                    try
+                    {
+                        return Instantiate(type, i < 1 ? null : value, out ignoredInstantiateValues);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                    }
+            }
+
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
         }
+
 
         public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {

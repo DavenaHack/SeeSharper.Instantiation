@@ -1,9 +1,14 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate a object with it default.
+    /// </summary>
     public class DefaultInstantiator : IInstantiator
     {
 
@@ -14,7 +19,9 @@ namespace Mimp.SeeSharper.Instantiation
                 throw new ArgumentNullException(nameof(type));
 
             return instantiateValues is null
-                || type.Default() == instantiateValues;
+                || type.Default() == instantiateValues
+                || instantiateValues is string str && string.IsNullOrWhiteSpace(str)
+                || instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable && !enumerable.Any();
         }
 
 

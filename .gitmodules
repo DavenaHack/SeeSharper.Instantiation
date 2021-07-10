@@ -1,0 +1,10 @@
+[submodule "libs/Reflection"]
+	path = libs/Reflection
+	url = https://github.com/DavenaHack/SeeSharper.Reflection.git
+	branch = master
+[submodule "libs/TypeResolver"]
+	path = libs/TypeResolver
+	url = https://github.com/DavenaHack/SeeSharper.TypeResolver.git
+	branch = master
+[submodule]
+	update = --init --recursive

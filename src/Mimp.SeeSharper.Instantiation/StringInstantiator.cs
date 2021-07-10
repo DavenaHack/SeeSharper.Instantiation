@@ -6,6 +6,9 @@ using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="string"/>.
+    /// </summary>
     public class StringInstantiator : IInstantiator
     {
 
@@ -17,6 +20,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             return type == typeof(string);
         }
+
 
         public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
@@ -30,27 +34,43 @@ namespace Mimp.SeeSharper.Instantiation
                 ignoredInstantiateValues = null;
                 return type.Default();
             }
+            
             if (instantiateValues is string s)
             {
                 ignoredInstantiateValues = null;
                 return s;
             }
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> keyValue && keyValue.Count() == 1)
+
+            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
             {
-                var p = keyValue.First();
-                if (string.IsNullOrWhiteSpace(p.Key))
+                var i = 0;
+                object? value = null;
+                foreach (var pair in enumerable)
+                {
+                    if (i++ > 1)
+                        break;
+                    if (!string.IsNullOrEmpty(pair.Key))
+                    {
+                        i++;
+                        break;
+                    }
+                    value = pair.Value;
+                }
+                if (i < 2)
                     try
                     {
-                        return Instantiate(type, p.Value, out ignoredInstantiateValues);
+                        return Instantiate(type, i < 1 ? null : value, out ignoredInstantiateValues);
                     }
                     catch (Exception ex)
                     {
-                        throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, ex);
+                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
                     }
             }
+
             ignoredInstantiateValues = null;
             return instantiateValues.ToString();
         }
+
 
         public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {

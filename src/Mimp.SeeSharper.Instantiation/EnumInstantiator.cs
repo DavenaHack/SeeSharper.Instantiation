@@ -2,10 +2,12 @@
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="Enum"/> or <see cref="Nullable{Enum}"/>.
+    /// </summary>
     public class EnumInstantiator : IInstantiator
     {
 
@@ -18,11 +20,12 @@ namespace Mimp.SeeSharper.Instantiation
             return type.IsEnum || type.IsNullable() && type.GetNullableValueType()!.IsEnum;
         }
 
+
         public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-			if (!Instantiable(type, instantiateValues))
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (!Instantiable(type, instantiateValues))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
 
             if (instantiateValues is null)
@@ -33,32 +36,57 @@ namespace Mimp.SeeSharper.Instantiation
                 var values = type.GetEnumValues();
                 return values.Length > 0 ? values.GetValue(0) : type.Default();
             }
+
             if (instantiateValues is string s)
             {
                 ignoredInstantiateValues = null;
-                return string.IsNullOrWhiteSpace(s) ? Instantiate(type, null, out ignoredInstantiateValues) : Enum.Parse(type, s, true);
+                try
+                {
+                    return string.IsNullOrWhiteSpace(s) ? Instantiate(type, null, out ignoredInstantiateValues)
+                        : Enum.Parse(type, s, true);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                }
             }
+
             var valueType = instantiateValues.GetType();
             if (valueType.IsNumber() || valueType.IsEnum)
             {
                 ignoredInstantiateValues = null;
                 return type.GetCastFunc(type)(instantiateValues);
             }
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> keyValue && keyValue.Count() == 1)
+
+            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
             {
-                var p = keyValue.First();
-                if (string.IsNullOrWhiteSpace(p.Key))
+                var i = 0;
+                object? value = null;
+                foreach (var pair in enumerable)
+                {
+                    if (i++ > 1)
+                        break;
+                    if (!string.IsNullOrEmpty(pair.Key))
+                    {
+                        i++;
+                        break;
+                    }
+                    value = pair.Value;
+                }
+                if (i < 2)
                     try
                     {
-                        return Instantiate(type, p.Value, out ignoredInstantiateValues);
+                        return Instantiate(type, i < 1 ? null : value, out ignoredInstantiateValues);
                     }
                     catch (Exception ex)
                     {
-                        throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, ex);
+                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
                     }
             }
-            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues);
+
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
         }
+
 
         public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {

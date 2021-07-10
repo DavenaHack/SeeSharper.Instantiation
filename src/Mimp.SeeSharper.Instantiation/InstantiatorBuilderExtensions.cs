@@ -21,7 +21,7 @@ namespace Mimp.SeeSharper.Instantiation
             return _ => new IInstantiator[]
             {
                 new BigIntegerInstantiator(),
-                new BoolInstantiator(),
+                new BooleanInstantiator(),
                 new ByteInstantiator(),
                 new CharInstantiator(),
                 new DateTimeInstantiator(),

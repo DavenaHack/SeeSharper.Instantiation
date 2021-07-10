@@ -6,6 +6,12 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <PropertyGroup Label="nullable">
+    <Nullable>enable</Nullable>
+    <DefineConstants Condition="'$(TargetFramework)' != 'netcoreapp2.1' and '$(TargetFramework)' != 'net48' and '$(TargetFramework)' != 'net461'">NullableAttributes;true</DefineConstants>
+    <WarningsAsErrors>nullable</WarningsAsErrors>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.7.1" />
     <PackageReference Include="MSTest.TestAdapter" Version="2.1.1" />
@@ -14,6 +20,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" />
+    <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj" />
+    <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver\Mimp.SeeSharper.TypeResolver.csproj" />
     <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
     <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation.Type\Mimp.SeeSharper.Instantiation.Type.csproj" />
     <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation\Mimp.SeeSharper.Instantiation.csproj" />

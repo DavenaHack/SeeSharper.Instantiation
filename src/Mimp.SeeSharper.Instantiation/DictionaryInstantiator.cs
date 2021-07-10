@@ -7,6 +7,9 @@ using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="IDictionary"/> or <see cref="IDictionary{TKey, TValue}"/>.
+    /// </summary>
     public class DictionaryInstantiator : IInstantiator
     {
 

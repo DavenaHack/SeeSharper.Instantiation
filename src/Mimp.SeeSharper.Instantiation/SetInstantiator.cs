@@ -6,8 +6,12 @@ using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="ISet{T}"/>.
+    /// </summary>
     public class SetInstantiator : IInstantiator
     {
+
 
         public IInstantiator InstanceInstantiator { get; }
 

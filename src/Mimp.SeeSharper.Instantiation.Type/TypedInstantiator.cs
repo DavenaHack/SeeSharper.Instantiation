@@ -74,7 +74,7 @@ namespace Mimp.SeeSharper.Instantiation.Type
                         }
                         catch (Exception ex)
                         {
-                            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, TypeKey, ex);
+                            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, TypeKey, ex);
                         }
                     }
                     else

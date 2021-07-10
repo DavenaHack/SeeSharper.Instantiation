@@ -9,6 +9,9 @@ using System.Reflection;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate the members of a object.
+    /// </summary>
     public class MemberInstantiator : IInstantiator
     {
 
@@ -18,9 +21,9 @@ namespace Mimp.SeeSharper.Instantiation
         public IInstantiator ValueInstantiator { get; }
 
 
-        public Action<object, string?, object?>? HandleUnkownMember { get; set; }
+        public Action<object, string?, object?>? HandleUnknownMember { get; set; }
 
-        public Action<object, string?, Type, object?, Exception>? HandleMemberCannotSet { get; set; }
+        public Action<object, string?, Type, object?, Exception>? HandleMemberCanNotSet { get; set; }
 
 
         public MemberInstantiator(IInstantiator instanceInstantiator, IInstantiator valueInstantiator)
@@ -30,7 +33,7 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public virtual bool Instantiable(Type type, object? instantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
@@ -39,7 +42,7 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public virtual object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
@@ -49,11 +52,13 @@ namespace Mimp.SeeSharper.Instantiation
             var instance = InstanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
             if (instance is null)
                 return null;
+
             InstantiateInstance(instance, ignoredInstantiateValues, out ignoredInstantiateValues);
+            
             return instance;
         }
 
-        protected virtual void InstantiateInstance(object instance, object? instantiateValues, out object? ignoredInitializeValues) =>
+        protected internal virtual void InstantiateInstance(object instance, object? instantiateValues, out object? ignoredInitializeValues) =>
             SetMembers(instance, instantiateValues,
                 (instance, property, value) => property.SetValue(instance, InstantiateMember(property.PropertyType, value, out _)),
                 (instance, field, value) => field.SetValue(instance, InstantiateMember(field.FieldType, value, out _)),
@@ -64,7 +69,7 @@ namespace Mimp.SeeSharper.Instantiation
             ValueInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public virtual void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {
             if (instance is null || initializeValues is null)
             {
@@ -129,8 +134,8 @@ namespace Mimp.SeeSharper.Instantiation
             var props = type.GetProperties();
 
             var ignoredValues = values.ToList();
-            var handleSet = HandleMemberCannotSet;
-            var handleUnkown = HandleUnkownMember;
+            var handleSet = HandleMemberCanNotSet;
+            var handleUnknown = HandleUnknownMember;
 
             var properties = type.GetProperties();
             var fields = type.GetFields();
@@ -151,7 +156,7 @@ namespace Mimp.SeeSharper.Instantiation
                         catch (Exception ex)
                         {
                             if (handleSet is null)
-                                throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, $".{name}", ex);
+                                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $".{name}", ex);
                             else
                                 try
                                 {
@@ -159,7 +164,7 @@ namespace Mimp.SeeSharper.Instantiation
                                 }
                                 catch (Exception hex)
                                 {
-                                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, $".{name}", hex);
+                                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $".{name}", hex);
                                 }
                         }
                         ignoredValues.Remove(pair);
@@ -193,16 +198,16 @@ namespace Mimp.SeeSharper.Instantiation
                 }
 
                 if (!used)
-                    if (handleUnkown is null)
+                    if (handleUnknown is null)
                         throw InstantiationException.GetNoMemberException(type, instantiateValues, name);
                     else
                         try
                         {
-                            handleUnkown.Invoke(instance, name, value);
+                            handleUnknown.Invoke(instance, name, value);
                         }
                         catch (Exception ex)
                         {
-                            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, $".{name}", ex);
+                            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $".{name}", ex);
                         }
             }
 

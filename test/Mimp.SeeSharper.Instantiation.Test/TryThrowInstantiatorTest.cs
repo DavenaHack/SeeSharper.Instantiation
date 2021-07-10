@@ -9,10 +9,10 @@ namespace Mimp.SeeSharper.Instantiation.Test
 
 
         [TestMethod]
-        public void InitializeTest()
+        public void TestInitialize()
         {
             var instantiator = new TryThrowInstantiator(new IInstantiator[] {
-                new BoolInstantiator()
+                new BooleanInstantiator()
             });
 
             var b = instantiator.Instantiate(typeof(bool), "true", out _);

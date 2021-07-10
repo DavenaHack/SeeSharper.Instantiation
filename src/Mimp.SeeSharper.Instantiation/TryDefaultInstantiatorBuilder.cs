@@ -38,11 +38,13 @@ namespace Mimp.SeeSharper.Instantiation
         public IInstantiator Build()
         {
             IInstantiator? root = null;
+#pragma warning disable CA1806 // Do not ignore method results
             new TryDefaultInstantiator(r =>
             {
                 root = _getRoot is null ? r : _getRoot(r) ?? throw new ArgumentException("SetRoot has return null.");
                 return _getChildren.SelectMany(getChild => getChild(root) ?? throw new ArgumentException("At least one getChildren has return null."));
             });
+#pragma warning restore CA1806 // Do not ignore method results
             return root!;
         }
 

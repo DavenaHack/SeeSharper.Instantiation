@@ -134,23 +134,23 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
             GetCanNotInstantiateParameterException(type, instantiateValues, constructor, parameter, (Exception?)null);
 
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues, string? memberPath, Exception? inner) =>
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath, Exception? inner) =>
             new InstantiationException(type, instantiateValues, memberPath, GetCantInstantiateMessage(type, instantiateValues), inner);
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues, Exception? inner) =>
-            GetCanNotInstantiateExeption(type, instantiateValues, null, inner);
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, Exception? inner) =>
+            GetCanNotInstantiateException(type, instantiateValues, null, inner);
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues, string? memberPath, IEnumerable<Exception> inners) =>
-            GetCanNotInstantiateExeption(type, instantiateValues, memberPath, new AggregateException(GetCantInstantiateMessage(type, instantiateValues), inners));
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath, IEnumerable<Exception> inners) =>
+            GetCanNotInstantiateException(type, instantiateValues, memberPath, new AggregateException(GetCantInstantiateMessage(type, instantiateValues), inners));
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues, IEnumerable<Exception> inners) =>
-            GetCanNotInstantiateExeption(type, instantiateValues, null, inners);
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, IEnumerable<Exception> inners) =>
+            GetCanNotInstantiateException(type, instantiateValues, null, inners);
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues, string? memberPath) =>
-            GetCanNotInstantiateExeption(type, instantiateValues, memberPath, (Exception?)null);
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath) =>
+            GetCanNotInstantiateException(type, instantiateValues, memberPath, (Exception?)null);
 
-        public static InstantiationException GetCanNotInstantiateExeption(Type type, object? instantiateValues) =>
-            GetCanNotInstantiateExeption(type, instantiateValues, (Exception?)null);
+        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues) =>
+            GetCanNotInstantiateException(type, instantiateValues, (Exception?)null);
 
 
         public static string GetCantInstantiateParameterMessage(ConstructorInfo constructor, ParameterInfo parameter) =>

@@ -7,6 +7,9 @@ using System.Reflection;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate classes or structors with a public constructor.
+    /// </summary>
     public class ConstructorInstantiator : IInstantiator
     {
 
@@ -23,10 +26,10 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
         public ConstructorInstantiator(IInstantiator parameterInstantiator)
-            : this(parameterInstantiator, false) { }
+            : this(parameterInstantiator, true) { }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public virtual bool Instantiable(Type type, object? instantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
@@ -35,7 +38,7 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public virtual object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
@@ -55,9 +58,10 @@ namespace Mimp.SeeSharper.Instantiation
             {
                 try
                 {
-                    var parameters = GetParameters(type, constructor, ignoredValues, out ignoredValues);
+                    var parameters = GetParameters(type, constructor, ignoredValues, out var values);
                     var instance = constructor.Invoke(parameters);
-                    ignoredInstantiateValues = ignoredValues;
+                    InstantiateInstance(instance, values, out values);
+                    ignoredInstantiateValues = values;
                     return instance;
                 }
                 catch (Exception ex)
@@ -66,7 +70,7 @@ namespace Mimp.SeeSharper.Instantiation
                 }
             }
             if (exceptions.Count > 0)
-                throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, exceptions);
+                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, exceptions);
 
             if (type.IsValueType)
             {
@@ -74,7 +78,7 @@ namespace Mimp.SeeSharper.Instantiation
                 return GetDefault(type);
             }
 
-            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues);
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
         }
 
 
@@ -240,14 +244,20 @@ namespace Mimp.SeeSharper.Instantiation
             else if (parameters.Length == 1)
                 return new[] { createParameter(parameters[0], instantiateValues, out ignoredInstantiateValues) };
 
-            throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues);
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
         }
 
-        protected virtual object? ConstructConstructorParameter(Type type, object? initalizeValue, out object? ignoredInitializeValues) =>
-            ParameterInstantiator.Construct(type, initalizeValue, out ignoredInitializeValues);
+        protected virtual object? ConstructConstructorParameter(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
+            ParameterInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        protected virtual void InstantiateInstance(object instance, object? instantiateValues, out object? ignoredInstantiateValues)
+        {
+            ignoredInstantiateValues = instantiateValues;
+        }
+
+
+        public virtual void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {
             ignoredInitializeValues = initializeValues;
         }

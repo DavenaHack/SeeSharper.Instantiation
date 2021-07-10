@@ -6,6 +6,10 @@ using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// <see cref="TryDefaultInstantiator"/> try all <see cref="IInstantiator"/>s and if no one can instantiate the object
+    /// it will return the default of the object.
+    /// </summary>
     public class TryDefaultInstantiator : IInstantiator
     {
 
@@ -48,6 +52,7 @@ namespace Mimp.SeeSharper.Instantiation
             return false;
         }
 
+
         public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
             foreach (var instantiator in Instantiators)
@@ -61,9 +66,11 @@ namespace Mimp.SeeSharper.Instantiation
                         return instance;
                     }
                     catch { }
+
             ignoredInstantiateValues = instantiateValues;
             return type.Default();
         }
+
 
         public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {
@@ -86,7 +93,7 @@ namespace Mimp.SeeSharper.Instantiation
             }
 
             if (instantiator is null)
-                throw new InvalidOperationException($@"""{instance}"" isn't instantiate from ""{this}""");
+                throw new InstantiationException(instance.GetType(), initializeValues, null, $@"""{instance}"" isn't instantiate from ""{this}""");
 
             instantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
         }

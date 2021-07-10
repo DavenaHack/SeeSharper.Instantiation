@@ -6,8 +6,12 @@ using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="IList"/> or <see cref="IList{T}"/>.
+    /// </summary>
     public class ListInstantiator : IInstantiator
     {
+
 
         public IInstantiator InstanceInstantiator { get; }
 

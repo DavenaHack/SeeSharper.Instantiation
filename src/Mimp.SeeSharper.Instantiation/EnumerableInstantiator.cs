@@ -7,6 +7,9 @@ using System.Reflection;
 
 namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="IEnumerable"/> or <see cref="IEnumerable{T}"/>.
+    /// </summary>
     public class EnumerableInstantiator : IInstantiator
     {
 
@@ -112,13 +115,13 @@ namespace Mimp.SeeSharper.Instantiation
                     }
                     catch (Exception ex)
                     {
-                        throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, $"[{count(instance) + tempList.Count}]", ex);
+                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $"[{count(instance) + tempList.Count}]", ex);
                     }
             }
             catch (Exception ex)
             {
                 if (wrapped)
-                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, ex);
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
                 try
                 {
                     tempList = new List<object?>
@@ -128,9 +131,9 @@ namespace Mimp.SeeSharper.Instantiation
                 }
                 catch (Exception sex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, new Exception[] {
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, new Exception[] {
                         ex,
-                        InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues,  $"[{count(instance)}]", sex)
+                        InstantiationException.GetCanNotInstantiateException(type, instantiateValues,  $"[{count(instance)}]", sex)
                     });
                 }
             }
@@ -193,13 +196,13 @@ namespace Mimp.SeeSharper.Instantiation
                     }
                     catch (Exception ex)
                     {
-                        throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, $"[{tempList.Count}]", ex);
+                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $"[{tempList.Count}]", ex);
                     }
             }
             catch (Exception ex)
             {
                 if (wrapped)
-                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, ex);
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
                 try
                 {
                     tempList = new List<object?>
@@ -209,9 +212,9 @@ namespace Mimp.SeeSharper.Instantiation
                 }
                 catch (Exception sex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, new Exception[] {
+                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, new Exception[] {
                         ex,
-                        InstantiationException.GetCanNotInstantiateExeption(type, instantiateValues, "[0]", sex)
+                        InstantiationException.GetCanNotInstantiateException(type, instantiateValues, "[0]", sex)
                     });
                 }
             }

@@ -1,0 +1,59 @@
+name: package
+
+on:
+  create:
+    tags:
+    - '*@v*'
+
+env:
+  PACKAGE_OUTPUT: '${{github.workspace}}/output'
+
+jobs:
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+      with:
+        submodules: recursive
+    
+    - name: Setup .NET 5
+      uses: actions/setup-dotnet@master
+      with:
+        dotnet-version: 5.0.x
+        
+    - name: Setup .NET Core 3.1
+      uses: actions/setup-dotnet@master
+      with:
+        dotnet-version: 3.1.x
+        
+    - name: Setup .NET Core 2.1
+      uses: actions/setup-dotnet@master
+      with:
+        dotnet-version: 2.1.x
+        
+    # .NET Frameworks are preinstalled
+    
+    
+    - name: Get tag name
+      uses: olegtarasov/get-tag@v2.1
+      id: tag
+      with:
+        tagRegex: '^(?<package>[\d\w.]+)@v(?<version>[\d\w.]+)$'
+      
+    
+    - name: Build Release
+      working-directory: ./src
+      run: dotnet build '${{steps.tag.outputs.package}}' --configuration Release
+      
+    - name: Pack Release
+      working-directory: ./src
+      run: dotnet pack '${{steps.tag.outputs.package}}' --no-restore --no-build --configuration Release --output '${{env.PACKAGE_OUTPUT}}'
+      
+      
+    - name: Push package to GitHub
+      run: dotnet nuget push '${{env.PACKAGE_OUTPUT}}/${{steps.tag.outputs.package}}.${{steps.tag.outputs.version}}.nupkg' --source 'https://nuget.pkg.github.com/DavenaHack/index.json' --api-key '${{secrets.NUGET_GITHUB_TOKEN}}'
+      
+    - name: Push package to NuGet
+      run: dotnet nuget push '${{env.PACKAGE_OUTPUT}}/${{steps.tag.outputs.package}}.${{steps.tag.outputs.version}}.nupkg' --source 'https://api.nuget.org/v3/index.json' --api-key '${{secrets.NUGET_TOKEN}}'
