@@ -33,17 +33,21 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <ProjectReference Include="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" />
-    <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj" />
+    <Reference Include="Mimp.SeeSharper.Reflection">
+      <HintPath>..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\bin\Debug\$(TargetFramework)\Mimp.SeeSharper.Reflection.dll</HintPath>
+    </Reference>
+    <Reference Include="Mimp.SeeSharper.TypeResolver.Abstraction">
+      <HintPath>..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\bin\Debug\$(TargetFramework)\Mimp.SeeSharper.TypeResolver.Abstraction.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
   </ItemGroup>
 
-  <Target Name="BuildDependencies" Condition="'$(Configuration)' == 'Debug'" BeforeTargets="BuildLink">
-    <Exec Command="dotnet build '..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj' -c $(Configuration)" />
-    <Exec Command="dotnet build '..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj' -c $(Configuration)" />
+  <Target Name="ResolveDependencies" BeforeTargets="BeforeResolveReferences" Condition="'$(Configuration)' == 'Debug'">
+    <MSBuild Projects="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
+    <MSBuild Projects="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
   </Target>
   
 </Project>
