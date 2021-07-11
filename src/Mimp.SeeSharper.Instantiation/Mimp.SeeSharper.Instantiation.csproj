@@ -27,6 +27,10 @@
     <WarningsAsErrors>nullable</WarningsAsErrors>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CSharp" Version="[4.5,]" />
+  </ItemGroup>
+  
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PackageReference Include="Mimp.SeeSharper.Reflection" Version="[1.0.0,]" />
   </ItemGroup>
