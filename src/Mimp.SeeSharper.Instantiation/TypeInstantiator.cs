@@ -1,34 +1,32 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
 using Mimp.SeeSharper.Reflection;
-using Mimp.SeeSharper.TypeResolver.Abstraction;
 using System;
 using System.Collections.Generic;
 
-namespace Mimp.SeeSharper.Instantiation.Type
+namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate <see cref="Type"/>.
+    /// </summary>
     public class TypeInstantiator : IInstantiator
     {
 
 
-        public ITypeResolver Resolver { get; }
-
-
-        public TypeInstantiator(ITypeResolver resolver)
+        public TypeInstantiator()
         {
-            Resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         }
 
 
-        public bool Instantiable(System.Type type, object? instantiateValues)
+        public bool Instantiable(Type type, object? instantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
 
-            return type.IsAssignableFrom(typeof(System.Type));
+            return type.IsAssignableFrom(typeof(Type));
         }
 
 
-        public object? Instantiate(System.Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
 			if (type is null)
 				throw new ArgumentNullException(nameof(type));
@@ -41,22 +39,14 @@ namespace Mimp.SeeSharper.Instantiation.Type
                 return type.Default();
             }
             
-            if (instantiateValues is System.Type t)
+            if (instantiateValues is Type t)
             {
                 ignoredInstantiateValues = null;
                 return t;
             }
 
             if (instantiateValues is string s)
-                try
-                {
-                    ignoredInstantiateValues = null;
-                    return Resolver.ResolveSingle(s);
-                }
-                catch (Exception ex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-                }
+                return InstantiateFromString(type, s, instantiateValues, out ignoredInstantiateValues);
 
             if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
             {
@@ -85,6 +75,20 @@ namespace Mimp.SeeSharper.Instantiation.Type
             }
 
             throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+        }
+
+        protected virtual object? InstantiateFromString(Type type, string value, object instantiateValues, out object? ignoredInstantiateValues)
+        {
+            try
+            {
+                var result = Type.GetType(value, true, true);
+                ignoredInstantiateValues = null;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+            }
         }
 
 

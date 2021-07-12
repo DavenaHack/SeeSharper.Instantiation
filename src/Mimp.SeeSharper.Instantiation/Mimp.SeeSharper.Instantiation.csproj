@@ -36,9 +36,7 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <Reference Include="Mimp.SeeSharper.Reflection">
-      <HintPath>..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\bin\Debug\$(TargetFramework)\Mimp.SeeSharper.Reflection.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" />
   </ItemGroup>
 
   <ItemGroup>

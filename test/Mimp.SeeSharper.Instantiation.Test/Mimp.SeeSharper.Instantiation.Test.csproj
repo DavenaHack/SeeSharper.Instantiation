@@ -24,7 +24,7 @@
     <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj" />
     <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver\Mimp.SeeSharper.TypeResolver.csproj" />
     <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
-    <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation.Type\Mimp.SeeSharper.Instantiation.Type.csproj" />
+    <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation.TypeResolver\Mimp.SeeSharper.Instantiation.TypeResolver.csproj" />
     <ProjectReference Include="..\..\src\Mimp.SeeSharper.Instantiation\Mimp.SeeSharper.Instantiation.csproj" />
   </ItemGroup>
 

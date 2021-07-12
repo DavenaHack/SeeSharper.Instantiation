@@ -2,7 +2,7 @@
 using Mimp.SeeSharper.TypeResolver.Abstraction;
 using System;
 
-namespace Mimp.SeeSharper.Instantiation.Type
+namespace Mimp.SeeSharper.Instantiation.TypeResolver
 {
     public static class TypeInstantiatorBuilderExtensions
     {
@@ -13,16 +13,16 @@ namespace Mimp.SeeSharper.Instantiation.Type
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
 
-            return builder.SetRoot(root => new TypedInstantiator(root, new TypeInstantiator(resolver), typeKey));
+            return builder.SetRoot(root => new TypedInstantiator(root, new ResolveTypeInstantiator(resolver), typeKey));
         }
 
 
-        public static IInstantiatorBuilder AddType(this IInstantiatorBuilder builder, ITypeResolver resolver)
+        public static IInstantiatorBuilder AddTypeResolver(this IInstantiatorBuilder builder, ITypeResolver resolver)
         {
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
 
-            return builder.Add(root => new[] { new TypeInstantiator(resolver) });
+            return builder.Add(root => new[] { new ResolveTypeInstantiator(resolver) });
         }
 
 

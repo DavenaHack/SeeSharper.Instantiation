@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using Mimp.SeeSharper.Instantiation.Type;
+using Mimp.SeeSharper.Instantiation.TypeResolver;
 using Mimp.SeeSharper.TypeResolver;
 using System.Collections.Generic;
 
@@ -14,7 +14,7 @@ namespace Mimp.SeeSharper.Instantiation.Test
         [TestMethod]
         public void TestInstantiate()
         {
-            var instantiator = new TypedInstantiator(new StringInstantiator(), new TypeInstantiator(new DelegateTypeResolver()), "$type");
+            var instantiator = new TypedInstantiator(new StringInstantiator(), new ResolveTypeInstantiator(new DelegateTypeResolver()), "$type");
 
             Assert.AreEqual("abc", instantiator.Construct<object>(new Dictionary<string, object?> {
                 { "$type", typeof(string).FullName },

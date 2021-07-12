@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mimp.SeeSharper.Instantiati
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mimp.SeeSharper.Instantiation.Abstraction", "..\src\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj", "{89E252B0-50B0-4834-B6F3-7FD7C184C9F7}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mimp.SeeSharper.Instantiation.Type", "..\src\Mimp.SeeSharper.Instantiation.Type\Mimp.SeeSharper.Instantiation.Type.csproj", "{859A9814-C564-46CB-B3D2-E4C610912F30}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mimp.SeeSharper.Instantiation.TypeResolver", "..\src\Mimp.SeeSharper.Instantiation.TypeResolver\Mimp.SeeSharper.Instantiation.TypeResolver.csproj", "{859A9814-C564-46CB-B3D2-E4C610912F30}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Mimp.SeeSharper.Instantiation.Test", "Mimp.SeeSharper.Instantiation.Test\Mimp.SeeSharper.Instantiation.Test.csproj", "{6C4C9D6E-93BB-4FFA-92F8-2046644DB4BC}"
 EndProject

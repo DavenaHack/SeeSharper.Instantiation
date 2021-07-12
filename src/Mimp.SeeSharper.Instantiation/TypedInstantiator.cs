@@ -3,8 +3,11 @@ using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
 
-namespace Mimp.SeeSharper.Instantiation.Type
+namespace Mimp.SeeSharper.Instantiation
 {
+    /// <summary>
+    /// A <see cref="IInstantiator"/> to instantiate a object with recieving type in instantiate values.
+    /// </summary>
     public class TypedInstantiator : IInstantiator
     {
 
@@ -20,13 +23,13 @@ namespace Mimp.SeeSharper.Instantiation.Type
         {
             InstanceInstantiator = instanceInstantiator ?? throw new ArgumentNullException(nameof(instanceInstantiator));
             TypeInstantiator = typeInstantiator ?? throw new ArgumentNullException(nameof(typeInstantiator));
-            if (!TypeInstantiator.Instantiable(typeof(System.Type), null))
-                throw new ArgumentException($@"{TypeInstantiator} can't instantiate a instance of type ""{typeof(System.Type)}""");
+            if (!TypeInstantiator.Instantiable(typeof(Type), null))
+                throw new ArgumentException($@"{TypeInstantiator} can't instantiate a instance of type ""{typeof(Type)}""");
             TypeKey = typeKey ?? throw new ArgumentNullException(nameof(typeKey));
         }
 
 
-        public bool Instantiable(System.Type type, object? instantiateValues)
+        public bool Instantiable(Type type, object? instantiateValues)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
@@ -36,7 +39,7 @@ namespace Mimp.SeeSharper.Instantiation.Type
                     if (string.Equals(pair.Key, TypeKey, StringComparison.InvariantCultureIgnoreCase))
                         try
                         {
-                            var t = (System.Type?)TypeInstantiator.Instantiate(typeof(System.Type), pair.Value, out var typeValues);
+                            var t = (Type?)TypeInstantiator.Instantiate(typeof(Type), pair.Value, out var typeValues);
                             if (t is not null)
                             {
                                 TypeInstantiator.Initialize(t, typeValues, out typeValues);
@@ -48,7 +51,7 @@ namespace Mimp.SeeSharper.Instantiation.Type
             return InstanceInstantiator.Instantiable(type, instantiateValues);
         }
 
-        public object? Instantiate(System.Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
 			if (type is null)
 				throw new ArgumentNullException(nameof(type));
@@ -63,7 +66,7 @@ namespace Mimp.SeeSharper.Instantiation.Type
                     {
                         try
                         {
-                            var t = (System.Type?)TypeInstantiator.Instantiate(typeof(System.Type), pair.Value, out var typeValues);
+                            var t = (Type?)TypeInstantiator.Instantiate(typeof(Type), pair.Value, out var typeValues);
                             if (t is not null)
                             {
                                 TypeInstantiator.Initialize(t, typeValues, out typeValues);

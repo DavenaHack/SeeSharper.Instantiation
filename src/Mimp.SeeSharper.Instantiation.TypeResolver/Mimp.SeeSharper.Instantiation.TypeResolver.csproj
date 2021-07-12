@@ -3,16 +3,16 @@
   <PropertyGroup>
     <TargetFrameworks>net5.0;netcoreapp3.1;netcoreapp2.1;netstandard2.1;net48;net461</TargetFrameworks>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>Mimp.SeeSharper.Instantiation.Type</AssemblyName>
+    <AssemblyName>Mimp.SeeSharper.Instantiation.TypeResolver</AssemblyName>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <AssemblyTitle>SeeSharper Instantiation Type</AssemblyTitle>
+    <AssemblyTitle>SeeSharper Instantiation TypeResolver</AssemblyTitle>
     <Description>SeeSharper Instantiation is a construct to instantiate objects.</Description>
     <Authors>SeeSharper Contributors</Authors>
     <Company>Mimp</Company>
-    <Product>SeeSharper Instantiation Type</Product>
+    <Product>SeeSharper Instantiation TypeResolver</Product>
     <Copyright>Copyright © 2021 SeeSharper Contributors</Copyright>
     <NeutralLanguage>en-US</NeutralLanguage>
-    <PackageId>Mimp.SeeSharper.Instantiation.Type</PackageId>
+    <PackageId>Mimp.SeeSharper.Instantiation.TypeResolver</PackageId>
     <Version>1.0.0</Version>
     <PackageTags>seesharper;.net;instantiate</PackageTags>
     <PackageProjectUrl>https://github.com/DavenaHack/SeeSharper.Instantiation</PackageProjectUrl>
@@ -33,16 +33,13 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
-    <Reference Include="Mimp.SeeSharper.Reflection">
-      <HintPath>..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\bin\Debug\$(TargetFramework)\Mimp.SeeSharper.Reflection.dll</HintPath>
-    </Reference>
-    <Reference Include="Mimp.SeeSharper.TypeResolver.Abstraction">
-      <HintPath>..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\bin\Debug\$(TargetFramework)\Mimp.SeeSharper.TypeResolver.Abstraction.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" />
+    <ProjectReference Include="..\..\libs\TypeResolver\src\Mimp.SeeSharper.TypeResolver.Abstraction\Mimp.SeeSharper.TypeResolver.Abstraction.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Mimp.SeeSharper.Instantiation.Abstraction\Mimp.SeeSharper.Instantiation.Abstraction.csproj" />
+    <ProjectReference Include="..\Mimp.SeeSharper.Instantiation\Mimp.SeeSharper.Instantiation.csproj" />
   </ItemGroup>
 
   <Target Name="ResolveDependencies" BeforeTargets="BeforeResolveReferences" Condition="'$(Configuration)' == 'Debug'">
