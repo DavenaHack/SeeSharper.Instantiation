@@ -118,9 +118,9 @@ namespace Mimp.SeeSharper.Instantiation
                 var instance = instanceInstantiator(root);
                 var intern = internalInstantiator(root);
 
-                instantiators.Add(new NullableInstantiator(intern));
                 foreach (var i in AddPrimitives()(root))
                     instantiators.Add(i);
+                instantiators.Add(new NullableInstantiator(intern));
 
                 foreach (var i in AddEnumerables(_ => instance, _ => intern)(root))
                     instantiators.Add(i);

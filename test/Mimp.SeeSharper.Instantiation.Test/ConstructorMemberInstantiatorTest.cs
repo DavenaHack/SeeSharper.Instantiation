@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Mimp.SeeSharper.Instantiation.Test
 {
     [TestClass]
-    public class ConstructorMemberTest
+    public class ConstructorMemberInstantiatorTest
     {
 
 

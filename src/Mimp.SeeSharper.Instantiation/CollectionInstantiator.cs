@@ -39,9 +39,9 @@ namespace Mimp.SeeSharper.Instantiation
 
         public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-			if (!Instantiable(type, instantiateValues))
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (!Instantiable(type, instantiateValues))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
 
             if (type == typeof(ICollection) || type == typeof(ICollection<>) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ICollection<>))
@@ -51,13 +51,7 @@ namespace Mimp.SeeSharper.Instantiation
                     return inits;
             }
 
-            var instance = (IEnumerable?)InstanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
-            if (instance is null)
-                return null;
-
-            EnumerableInstantiator.InstantiateInstance(type, instance, ignoredInstantiateValues, InstantiateValue, out ignoredInstantiateValues);
-
-            return instance;
+            return EnumerableInstantiator.Instantiate(type, instantiateValues, InstanceInstantiator, InstantiateValue, out ignoredInstantiateValues);
         }
 
         protected virtual object? InstantiateValue(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
@@ -75,9 +69,8 @@ namespace Mimp.SeeSharper.Instantiation
             var type = instance.GetType();
             if (!Instantiable(type, null))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
-            
-            InstanceInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            EnumerableInstantiator.InitializeInstance((IEnumerable)instance, ignoredInitializeValues, InitializeValue, out ignoredInitializeValues);
+
+            EnumerableInstantiator.Initialize(type, (IEnumerable)instance, initializeValues, InstanceInstantiator, InitializeValue, out ignoredInitializeValues);
         }
 
         protected virtual object? InitializeValue(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)

@@ -2,7 +2,6 @@
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
@@ -24,9 +23,9 @@ namespace Mimp.SeeSharper.Instantiation
 
         public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
         {
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-			if (!Instantiable(type, instantiateValues))
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (!Instantiable(type, instantiateValues))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
 
             if (instantiateValues is null)
@@ -34,11 +33,17 @@ namespace Mimp.SeeSharper.Instantiation
                 ignoredInstantiateValues = null;
                 return type.Default();
             }
-            
+
             if (instantiateValues is string s)
             {
                 ignoredInstantiateValues = null;
                 return s;
+            }
+
+            if (instantiateValues.GetType().IsPrimitive)
+            {
+                ignoredInstantiateValues = null;
+                return instantiateValues.ToString();
             }
 
             if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
@@ -67,8 +72,7 @@ namespace Mimp.SeeSharper.Instantiation
                     }
             }
 
-            ignoredInstantiateValues = null;
-            return instantiateValues.ToString();
+            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
         }
 
 

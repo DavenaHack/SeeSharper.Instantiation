@@ -55,13 +55,7 @@ namespace Mimp.SeeSharper.Instantiation
                     return inits;
             }
 
-            var instance = (IEnumerable?)InstanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
-            if (instance is null)
-                return null;
-
-            EnumerableInstantiator.InstantiateInstance(type, instance, ignoredInstantiateValues, InstantiatePair, out ignoredInstantiateValues);
-
-            return instance;
+            return EnumerableInstantiator.Instantiate(type, instantiateValues, InstanceInstantiator, InstantiatePair, out ignoredInstantiateValues);
         }
 
         protected virtual object? InstantiatePair(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
@@ -80,8 +74,7 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, null))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
 
-            InstanceInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            EnumerableInstantiator.InitializeInstance((IEnumerable)instance, ignoredInitializeValues, InitializePair, out ignoredInitializeValues);
+            EnumerableInstantiator.Initialize(type, (IEnumerable)instance, initializeValues, InstanceInstantiator, InitializePair, out ignoredInitializeValues);
         }
 
         protected virtual object? InitializePair(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)
