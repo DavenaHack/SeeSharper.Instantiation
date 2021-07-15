@@ -3,6 +3,7 @@ using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
@@ -50,13 +51,7 @@ namespace Mimp.SeeSharper.Instantiation
                     return inits;
             }
 
-            var instance = (IEnumerable?)InstanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
-            if (instance is null)
-                return null;
-
-            EnumerableInstantiator.InstantiateInstance(type, instance, ignoredInstantiateValues, InstantiateValue, out ignoredInstantiateValues);
-
-            return instance;
+            return EnumerableInstantiator.Instantiate(type, instantiateValues, InstanceInstantiator, InstantiateValue, out ignoredInstantiateValues);
         }
 
         protected virtual object? InstantiateValue(Type type, object? initializeValues, out object? ignoreInitializeValues) =>
@@ -75,11 +70,10 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, null))
                 throw InstantiationException.GetNotMatchingTypeException(this, type);
 
-            InstanceInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            EnumerableInstantiator.InitializeInstance((IEnumerable)instance, ignoredInitializeValues, InitializePair, out ignoredInitializeValues);
+            EnumerableInstantiator.Initialize(type, (IEnumerable)instance, initializeValues, InstanceInstantiator, InitializeValue, out ignoredInitializeValues);
         }
 
-        protected virtual object? InitializePair(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        protected virtual object? InitializeValue(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)
         {
             if (instance is null)
                 return ValueInstantiator.Construct(type, initializeValues, out ignoredInitializeValues);
