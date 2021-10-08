@@ -1,4 +1,5 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.TypeResolver.Abstraction;
 using System;
 
@@ -18,17 +19,16 @@ namespace Mimp.SeeSharper.Instantiation.TypeResolver
         }
 
 
-        protected override object? InstantiateFromString(Type type, string value, object instantiateValues, out object? ignoredInstantiateValues)
+        protected override object? InstantiateFromString(Type type, string value, IObjectDescription description, out IObjectDescription? ignored)
         {
             try
             {
-                var result = Resolver.ResolveSingle(value);
-                ignoredInstantiateValues = null;
-                return result;
+                ignored = null;
+                return Resolver.ResolveSingle(value);
             }
             catch (Exception ex)
             {
-                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
             }
         }
 

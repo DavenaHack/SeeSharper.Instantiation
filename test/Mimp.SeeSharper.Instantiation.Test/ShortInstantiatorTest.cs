@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,18 +14,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new ShortInstantiator();
 
-            Assert.AreEqual(12345, instantiator.Construct<short>("12345"));
-            Assert.AreEqual(12345, instantiator.Construct<short>(" 12345 "));
-            Assert.AreEqual(12345, instantiator.Construct<short>(new Dictionary<string, object?> { { "", "12345" } }));
+            Assert.AreEqual(12345, instantiator.Construct<short>(ObjectDescriptions.Constant("12345")));
+            Assert.AreEqual(12345, instantiator.Construct<short>(ObjectDescriptions.Constant(" 12345 ")));
+            Assert.AreEqual(12345, instantiator.Construct<short>(ObjectDescriptions.Constant("12345").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<short>("abc");
+                instantiator.Construct<short>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<short?>(""));
-            Assert.IsNull(instantiator.Construct<short?>(null));
-            Assert.IsNull(instantiator.Construct<short?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<short?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<short?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<short?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

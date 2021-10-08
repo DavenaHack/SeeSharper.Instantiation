@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 using System.Numerics;
 
 namespace Mimp.SeeSharper.Instantiation.Test
@@ -15,18 +15,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new BigIntegerInstantiator();
 
-            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>("12345"));
-            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>(" 12345 "));
-            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>(new Dictionary<string, object?> { { "", "12345" } }));
+            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>(ObjectDescriptions.Constant("12345")));
+            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>(ObjectDescriptions.Constant(" 12345 ")));
+            Assert.AreEqual(new BigInteger(12345), instantiator.Construct<BigInteger>(ObjectDescriptions.Constant("12345").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<BigInteger>("abc");
+                instantiator.Construct<BigInteger>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<BigInteger?>(""));
-            Assert.IsNull(instantiator.Construct<BigInteger?>(null));
-            Assert.IsNull(instantiator.Construct<BigInteger?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<BigInteger?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<BigInteger?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<BigInteger?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

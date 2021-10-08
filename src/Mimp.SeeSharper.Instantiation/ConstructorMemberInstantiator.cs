@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using System;
 
 namespace Mimp.SeeSharper.Instantiation
@@ -10,10 +12,7 @@ namespace Mimp.SeeSharper.Instantiation
     {
 
 
-        public IInstantiator MemberInstantiator
-        {
-            get => _memberInstantiator.ValueInstantiator;
-        }
+        public IInstantiator MemberInstantiator => _memberInstantiator.ValueInstantiator;
 
         public Action<object, string?, object?>? HandleUnknownMember
         {
@@ -34,30 +33,36 @@ namespace Mimp.SeeSharper.Instantiation
         public ConstructorMemberInstantiator(
             IInstantiator parameterInstantiator,
             bool tryDefaultInstance,
+            bool useDefaultParameter,
             IInstantiator memberInstantiator
-            ) : base(parameterInstantiator, tryDefaultInstance)
+            ) : base(parameterInstantiator, tryDefaultInstance, useDefaultParameter)
         {
             _memberInstantiator = new MemberInstantiator(this, memberInstantiator ?? throw new ArgumentNullException(nameof(memberInstantiator)));
         }
 
-        public ConstructorMemberInstantiator(IInstantiator valueInstantiator, bool tryDefaultInstance)
-            : this(valueInstantiator ?? throw new ArgumentNullException(nameof(valueInstantiator)), tryDefaultInstance, valueInstantiator) { }
+        public ConstructorMemberInstantiator(IInstantiator valueInstantiator, bool tryDefaultInstance, bool useDefaultParameter)
+            : this(valueInstantiator ?? throw new ArgumentNullException(nameof(valueInstantiator)), tryDefaultInstance, useDefaultParameter, valueInstantiator) { }
 
         public ConstructorMemberInstantiator(IInstantiator valueInstantiator)
-            : this(valueInstantiator, true) { }
+            : this(valueInstantiator, true, true) { }
 
 
-        protected override void InstantiateInstance(object instance, object? instantiateValues, out object? ignoredInstantiateValues)
+        protected override void InstantiateInstance(object instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            base.InstantiateInstance(instance, instantiateValues, out ignoredInstantiateValues);
-            _memberInstantiator.InstantiateInstance(instance, ignoredInstantiateValues, out ignoredInstantiateValues);
+            base.InstantiateInstance(instance, description, out ignored);
+            _memberInstantiator.InstantiateInstance(instance, ignored ?? ObjectDescriptions.NullDescription, out ignored);
         }
 
 
-        public override void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public override object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            base.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            _memberInstantiator.Initialize(instance, ignoredInitializeValues, out ignoredInitializeValues);
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            instance = base.Initialize(type, instance, description, out ignored);
+            return _memberInstantiator.Initialize(instance, ignored ?? ObjectDescriptions.NullDescription, out ignored);
         }
 
 

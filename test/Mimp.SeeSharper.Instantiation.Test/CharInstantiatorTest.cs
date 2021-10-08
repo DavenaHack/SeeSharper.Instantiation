@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,17 +14,17 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new CharInstantiator();
 
-            Assert.AreEqual('0', instantiator.Construct<char>("0"));
-            Assert.AreEqual('0', instantiator.Construct<char>(new Dictionary<string, object?> { { "", "0" } }));
+            Assert.AreEqual('0', instantiator.Construct<char>(ObjectDescriptions.Constant("0")));
+            Assert.AreEqual('0', instantiator.Construct<char>(ObjectDescriptions.Constant("0").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<char>("abc");
+                instantiator.Construct<char>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<char?>(""));
-            Assert.IsNull(instantiator.Construct<char?>(null));
-            Assert.IsNull(instantiator.Construct<char?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<char?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<char?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<char?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

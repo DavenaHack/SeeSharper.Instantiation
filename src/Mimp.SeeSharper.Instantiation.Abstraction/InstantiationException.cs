@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mimp.SeeSharper.ObjectDescription.Abstraction;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -12,7 +13,7 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
 
         public Type Type { get; }
 
-        public object? InstantiateValues { get; }
+        public IObjectDescription? Description { get; }
 
         public string? MemberPath { get; }
 
@@ -47,11 +48,13 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
                             if (aex.InnerExceptions.Count > 1)
                                 //(string)typeof(AggregateException)
                                 //    .GetField("_message", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(aex)
-                                foreach (var m in Regex.Split(message, @"\r\n|\r|\n"))
+                                foreach (var m in Regex.Split(message, @"
+|\r|\n"))
                                     yield return m;
                             foreach (var ex in aex.InnerExceptions)
                                 foreach (var sm in GetSubMessages(path, ex))
-                                    foreach (var m in Regex.Split(sm, @"\r\n|\r|\n"))
+                                    foreach (var m in Regex.Split(sm, @"
+|\r|\n"))
                                         yield return $"{(aex.InnerExceptions.Count > 1 ? "\t" : "")}{m}";
                             yield break;
                         }
@@ -65,9 +68,11 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
                     if (!string.IsNullOrWhiteSpace(path))
                         lastMessage = $@"Can't create member ""{Type.Name}{path}""{(string.IsNullOrWhiteSpace(lastMessage) ? "." : $": {lastMessage}")}";
                     if (!string.IsNullOrWhiteSpace(lastMessage))
-                        foreach (var m in Regex.Split(lastMessage, @"\r\n|\r|\n"))
+                        foreach (var m in Regex.Split(lastMessage, @"
+|\r|\n"))
                             yield return $"{m}";
-                    foreach (var m in Regex.Split(message, @"\r\n|\r|\n"))
+                    foreach (var m in Regex.Split(message, @"
+|\r|\n"))
                         yield return $"\t{m}";
                 }
                 _message = SingleMessage;
@@ -79,29 +84,29 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
         }
 
 
-        public InstantiationException(Type type, object? instantiateValues)
-            : this(type, instantiateValues, null) { }
+        public InstantiationException(Type type, IObjectDescription description)
+            : this(type, description, null) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath)
-            : this(type, instantiateValues, memberPath, null, (Exception?)null) { }
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath)
+            : this(type, description, memberPath, null, (Exception?)null) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath, string? message)
-            : this(type, instantiateValues, memberPath, message, (Exception?)null) { }
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath, string? message)
+            : this(type, description, memberPath, message, (Exception?)null) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath, Exception? inner)
-            : this(type, instantiateValues, memberPath, null, inner) { }
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath, Exception? inner)
+            : this(type, description, memberPath, null, inner) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath, IEnumerable<Exception> inners)
-            : this(type, instantiateValues, memberPath, null, inners) { }
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath, IEnumerable<Exception> inners)
+            : this(type, description, memberPath, null, inners) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath, string? message, IEnumerable<Exception> inners)
-            : this(type, instantiateValues, memberPath, message, new AggregateException(message, inners)) { }
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath, string? message, IEnumerable<Exception> inners)
+            : this(type, description, memberPath, message, new AggregateException(message, inners)) { }
 
-        public InstantiationException(Type type, object? instantiateValues, string? memberPath, string? message, Exception? inner)
+        public InstantiationException(Type type, IObjectDescription description, string? memberPath, string? message, Exception? inner)
             : base(message, inner)
         {
             Type = type;
-            InstantiateValues = instantiateValues;
+            Description = description;
             MemberPath = memberPath;
         }
 
@@ -116,48 +121,55 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
         }
 
 
-        public static InstantiationException GetNotMatchingTypeException(IInstantiator instantiator, Type type) =>
-            new InstantiationException(type, null, null, $@"{instantiator} can't handle type ""{type}"".");
+        public static InstantiationException GetNotMatchingTypeException(IInstantiator instantiator, Type type, IObjectDescription description) =>
+            new InstantiationException(type, description, null, $@"{instantiator} can't handle type ""{type}"".");
 
 
-        public static InstantiationException GetNoMemberException(Type type, object? instantiateValues, string? name) =>
-            new InstantiationException(type, instantiateValues, $".{name}", $@"{type} has no member ""{name}"".");
+        public static InstantiationException GetNoMemberException(Type type, IObjectDescription description, string? name) =>
+            new InstantiationException(type, description, $".{name}", $@"{type} has no member ""{name}"".");
 
 
-        public static InstantiationException GetCanNotInstantiateParameterException(Type type, object? instantiateValues, ConstructorInfo constructor, ParameterInfo parameter, IEnumerable<Exception> inners) =>
-            GetCanNotInstantiateParameterException(type, instantiateValues, constructor, parameter, new AggregateException(GetCantInstantiateParameterMessage(constructor, parameter), inners));
+        public static InstantiationException GetCanNotInstantiateParameterException(Type type, IObjectDescription description, ConstructorInfo constructor, ParameterInfo parameter, IEnumerable<Exception> inners) =>
+            GetCanNotInstantiateParameterException(type, description, constructor, parameter, new AggregateException(GetCanNotInstantiateParameterMessage(constructor, parameter), inners));
 
-        public static InstantiationException GetCanNotInstantiateParameterException(Type type, object? instantiateValues, ConstructorInfo constructor, ParameterInfo parameter, Exception? inner) =>
-            new InstantiationException(type, instantiateValues, null, GetCantInstantiateParameterMessage(constructor, parameter), inner);
+        public static InstantiationException GetCanNotInstantiateParameterException(Type type, IObjectDescription description, ConstructorInfo constructor, ParameterInfo parameter, Exception? inner) =>
+            new InstantiationException(type, description, $"({parameter.Name})", GetCanNotInstantiateParameterMessage(constructor, parameter), inner);
 
-        public static InstantiationException GetCanNotInstantiateParameterException(Type type, object? instantiateValues, ConstructorInfo constructor, ParameterInfo parameter) =>
-            GetCanNotInstantiateParameterException(type, instantiateValues, constructor, parameter, (Exception?)null);
-
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath, Exception? inner) =>
-            new InstantiationException(type, instantiateValues, memberPath, GetCantInstantiateMessage(type, instantiateValues), inner);
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, Exception? inner) =>
-            GetCanNotInstantiateException(type, instantiateValues, null, inner);
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath, IEnumerable<Exception> inners) =>
-            GetCanNotInstantiateException(type, instantiateValues, memberPath, new AggregateException(GetCantInstantiateMessage(type, instantiateValues), inners));
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, IEnumerable<Exception> inners) =>
-            GetCanNotInstantiateException(type, instantiateValues, null, inners);
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues, string? memberPath) =>
-            GetCanNotInstantiateException(type, instantiateValues, memberPath, (Exception?)null);
-
-        public static InstantiationException GetCanNotInstantiateException(Type type, object? instantiateValues) =>
-            GetCanNotInstantiateException(type, instantiateValues, (Exception?)null);
+        public static InstantiationException GetCanNotInstantiateParameterException(Type type, IObjectDescription description, ConstructorInfo constructor, ParameterInfo parameter) =>
+            GetCanNotInstantiateParameterException(type, description, constructor, parameter, (Exception?)null);
 
 
-        public static string GetCantInstantiateParameterMessage(ConstructorInfo constructor, ParameterInfo parameter) =>
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description, string? memberPath, Exception? inner) =>
+            new InstantiationException(type, description, memberPath, GetCanNotInstantiateMessage(type, description), inner);
+
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description, Exception? inner) =>
+            GetCanNotInstantiateException(type, description, null, inner);
+
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description, string? memberPath, IEnumerable<Exception> inners) =>
+            GetCanNotInstantiateException(type, description, memberPath, new AggregateException(GetCanNotInstantiateMessage(type, description), inners));
+
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description, IEnumerable<Exception> inners) =>
+            GetCanNotInstantiateException(type, description, null, inners);
+
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description, string? memberPath) =>
+            GetCanNotInstantiateException(type, description, memberPath, (Exception?)null);
+
+        public static InstantiationException GetCanNotInstantiateException(Type type, IObjectDescription description) =>
+            GetCanNotInstantiateException(type, description, (Exception?)null);
+
+
+        public static InstantiationException GetUsedNotAllException(Type type, IObjectDescription description, IObjectDescription ignored) =>
+            new InstantiationException(type, description, GetUsedNotAllMessage(type, description, ignored));
+
+
+        public static string GetCanNotInstantiateParameterMessage(ConstructorInfo constructor, ParameterInfo parameter) =>
             $@"Can't create value for parameter ""{parameter.Name}"" of ""{constructor}"".";
 
-        public static string GetCantInstantiateMessage(Type type, object? instantiateValues) =>
-            $@"Can't create ""{type}"" from value ""{instantiateValues}"".";
+        public static string GetCanNotInstantiateMessage(Type type, IObjectDescription description) =>
+            $@"Can't create ""{type}"" from ""{description}"".";
+
+        public static string GetUsedNotAllMessage(Type type, IObjectDescription description, IObjectDescription ignored) =>
+            $@"Used not all ""{description}"" for ""{type}"": {ignored}";
 
 
     }

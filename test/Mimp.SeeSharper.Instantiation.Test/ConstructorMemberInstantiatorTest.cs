@@ -1,6 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Test.Mock;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -20,12 +20,10 @@ namespace Mimp.SeeSharper.Instantiation.Test
                     Bar = "bar",
                     Num = "num"
                 },
-                instantiator.Instantiate(typeof(ConstructorMemberObject), new Dictionary<string, object?>
-                {
-                    { nameof(ConstructorMemberObject.Prop), "prop" },
-                    { nameof(ConstructorMemberObject.Bar), "bar" },
-                    { nameof(ConstructorMemberObject.Num), "num" },
-                }, out _));
+                instantiator.Instantiate(typeof(ConstructorMemberObject), ObjectDescriptions.EmptyDescription
+                    .Append(nameof(ConstructorMemberObject.Prop), "prop")
+                    .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                    .Append(nameof(ConstructorMemberObject.Num), "num").Constant(), out _));
         }
 
 

@@ -1,7 +1,8 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
-using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation
 {
@@ -12,73 +13,82 @@ namespace Mimp.SeeSharper.Instantiation
     {
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             return type == typeof(string);
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (instantiateValues is null)
+            if (description.HasValue)
             {
-                ignoredInstantiateValues = null;
-                return type.Default();
-            }
-
-            if (instantiateValues is string s)
-            {
-                ignoredInstantiateValues = null;
-                return s;
-            }
-
-            if (instantiateValues.GetType().IsPrimitive)
-            {
-                ignoredInstantiateValues = null;
-                return instantiateValues.ToString();
-            }
-
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
-            {
-                var i = 0;
-                object? value = null;
-                foreach (var pair in enumerable)
+                if (description.Value is null)
                 {
-                    if (i++ > 1)
-                        break;
-                    if (!string.IsNullOrEmpty(pair.Key))
-                    {
-                        i++;
-                        break;
-                    }
-                    value = pair.Value;
+                    ignored = null;
+                    return type.Default();
                 }
-                if (i < 2)
-                    try
-                    {
-                        return Instantiate(type, i < 1 ? null : value, out ignoredInstantiateValues);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-                    }
-            }
 
-            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+                if (description.Value is string s)
+                {
+                    ignored = null;
+                    return s;
+                }
+
+                if (description.Value.GetType().IsPrimitive)
+                {
+                    ignored = null;
+                    return description.Value.ToString();
+                }
+
+            }
+            else if (description.IsEmpty())
+                try
+                {
+                    return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            else if (description.IsWrappedValue())
+                try
+                {
+                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+
+            throw InstantiationException.GetCanNotInstantiateException(type, description);
         }
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInitializeValues = initializeValues;
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            ignored = description.IsNullOrEmpty() ? null : description;
+            return instance;
         }
 
 

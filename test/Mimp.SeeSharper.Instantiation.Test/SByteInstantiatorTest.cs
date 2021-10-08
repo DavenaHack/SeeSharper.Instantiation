@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
 using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation.Test
@@ -14,18 +15,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new SByteInstantiator();
 
-            Assert.AreEqual(0, instantiator.Construct<sbyte>("0"));
-            Assert.AreEqual(0, instantiator.Construct<sbyte>(" 0 "));
-            Assert.AreEqual(0, instantiator.Construct<sbyte>(new Dictionary<string, object?> { { "", "0" } }));
+            Assert.AreEqual(0, instantiator.Construct<sbyte>(ObjectDescriptions.Constant("0")));
+            Assert.AreEqual(0, instantiator.Construct<sbyte>(ObjectDescriptions.Constant(" 0 ")));
+            Assert.AreEqual(0, instantiator.Construct<sbyte>(ObjectDescriptions.Constant("0").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<sbyte>("12345");
+                instantiator.Construct<sbyte>(ObjectDescriptions.Constant("12345"));
             });
 
-            Assert.IsNull(instantiator.Construct<sbyte?>(""));
-            Assert.IsNull(instantiator.Construct<sbyte?>(null));
-            Assert.IsNull(instantiator.Construct<sbyte?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<sbyte?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<sbyte?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<sbyte?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

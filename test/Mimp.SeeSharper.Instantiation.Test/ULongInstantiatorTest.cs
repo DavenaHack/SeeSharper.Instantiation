@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,18 +14,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new ULongInstantiator();
 
-            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>("12345"));
-            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>(" 12345 "));
-            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>(new Dictionary<string, object?> { { "", "12345" } }));
+            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>(ObjectDescriptions.Constant("12345")));
+            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>(ObjectDescriptions.Constant(" 12345 ")));
+            Assert.AreEqual((ulong)12345, instantiator.Construct<ulong>(ObjectDescriptions.Constant("12345").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<ulong>("abc");
+                instantiator.Construct<ulong>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<ulong?>(""));
-            Assert.IsNull(instantiator.Construct<ulong?>(null));
-            Assert.IsNull(instantiator.Construct<ulong?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<ulong?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<ulong?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<ulong?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

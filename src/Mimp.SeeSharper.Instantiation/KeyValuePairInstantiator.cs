@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
@@ -28,212 +30,301 @@ namespace Mimp.SeeSharper.Instantiation
             : this(instantiator, instantiator) { }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             return type.IsKeyValuePair();
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (instantiateValues is null)
-            {
-                ignoredInstantiateValues = null;
-                return type.Default();
-            }
-
-            var initType = instantiateValues.GetType();
-            dynamic dyn = instantiateValues;
             var types = type.GetKeyValuePairKeyValueType()!.ToArray();
-            object? Create(object? key, object? value)
+
+            if (description.HasValue)
             {
-                try
+                if (description.Value is null)
                 {
-                    key = InstantiateKey(types[0], key, out _);
-                }
-                catch (Exception ex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $".{nameof(KeyValuePair<string?, object?>.Key)}", ex);
-                }
-                try
-                {
-                    value = InstantiateValue(types[1], value, out _);
-                }
-                catch (Exception ex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $".{nameof(KeyValuePair<string?, object?>.Value)}", ex);
-                }
-                return type.GetNewParameterFunc(types)(new[] { key, value });
-            }
-
-            if (initType.IsKeyValuePair())
-            {
-                var result = Create(dyn.Key, dyn.Value);
-                ignoredInstantiateValues = null;
-                return result;
-            }
-
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
-            {
-                var has = false;
-                KeyValuePair<string?, object?>? pair = null;
-                var hasKey = false;
-                var hasValue = false;
-                object? key = null;
-                object? value = null;
-
-                foreach (var p in enumerable)
-                {
-                    if (!has && !hasKey && !hasValue && string.IsNullOrEmpty(p.Key))
-                    {
-                        has = true;
-                        pair = p;
-                    }
-                    else if (!has && !hasKey && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        hasKey = true;
-                        key = p.Value;
-                    }
-                    else if (!has && !hasValue && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Value), StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        hasValue = true;
-                        value = p.Value;
-                    }
-                    else
-                        throw InstantiationException.GetNoMemberException(type, instantiateValues, p.Key);
+                    ignored = null;
+                    return type.Default();
                 }
 
-                if (has)
+                var initType = description.Value.GetType();
+                dynamic dyn = description.Value;
+                if (initType.IsKeyValuePair())
                 {
-                    var result = Create(pair!.Value.Key, pair.Value.Value);
-                    ignoredInstantiateValues = null;
+                    var result = Create(ObjectDescriptions.Constant((object?)dyn.Key), out var keyIgnore,
+                        ObjectDescriptions.Constant((object?)dyn.Value), out var valueIgnore);
+
+                    ignored = null;
+                    if (keyIgnore is not null)
+                        ignored = keyIgnore;
+                    if (valueIgnore is not null)
+                        ignored = ignored?.Concat(valueIgnore).Constant() ?? valueIgnore;
+
                     return result;
                 }
-                else if (!hasKey && !hasValue)
+            }
+            else if (description.IsEmpty())
+                try
+                {
+                    return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            else if (description.IsWrappedValue())
+                try
+                {
+                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            else
+            {
+                KeyValuePair<string?, IObjectDescription>? key = null;
+                KeyValuePair<string?, IObjectDescription>? value = null;
+
+                foreach (var c in description.Children)
+                {
+                    if (key is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        key = c;
+                    }
+                    else if (value is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Value), StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        value = c;
+                    }
+                    else
+                        throw InstantiationException.GetNoMemberException(type, description, c.Key);
+                }
+
+                if (!key.HasValue && !value.HasValue)
                     try
                     {
-                        return Instantiate(type, null, out ignoredInstantiateValues);
+                        return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
                     }
                     catch (Exception ex)
                     {
-                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                        throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                     }
-                else if (hasKey && hasValue)
+                else if (key.HasValue && value.HasValue)
                 {
-                    var result = Create(key, value);
-                    ignoredInstantiateValues = null;
+                    var result = Create(key.Value.Value, out var keyIgnore, value.Value.Value, out var valueIgnore);
+
+                    ignored = null;
+                    if (keyIgnore is not null)
+                        ignored = ObjectDescriptions.Constant(key.Value.Key, keyIgnore);
+                    if (valueIgnore is not null)
+                        ignored = ignored?.Append(value.Value.Key, valueIgnore).Constant()
+                            ?? ObjectDescriptions.Constant(value.Value.Key, valueIgnore);
+
                     return result;
                 }
                 else
-                    throw new InstantiationException(type, instantiateValues, null, $@"{type} has to have a ""{nameof(KeyValuePair<string?, object?>.Key)}"" and ""{nameof(KeyValuePair<string?, object?>.Value)}"".");
-            }
+                    throw new InstantiationException(type, description, null,
+                        $@"{type} has to have a ""{nameof(KeyValuePair<string?, object?>.Key)}"" "
+                        + $@"and ""{nameof(KeyValuePair<string?, object?>.Value)}"".");
 
-            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+            }
+            throw InstantiationException.GetCanNotInstantiateException(type, description);
+
+
+            object? Create(IObjectDescription key, out IObjectDescription? ignoredKey, IObjectDescription value, out IObjectDescription? ignoredValue)
+            {
+                try
+                {
+                    object? keyValue;
+                    try
+                    {
+                        keyValue = InstantiateKey(types[0], key, out ignoredKey);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw InstantiationException.GetCanNotInstantiateException(types[0], key, $".{nameof(KeyValuePair<string?, object?>.Key)}", ex);
+                    }
+                    object? valueValue;
+                    try
+                    {
+                        valueValue = InstantiateValue(types[1], value, out ignoredValue);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw InstantiationException.GetCanNotInstantiateException(types[1], value, $".{nameof(KeyValuePair<string?, object?>.Value)}", ex);
+                    }
+                    return type.GetNewParameterFunc(types)(new[] { keyValue, valueValue });
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            }
         }
 
-        protected virtual object? InstantiateKey(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
-            KeyInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
+        protected virtual object? InstantiateKey(Type type, IObjectDescription description, out IObjectDescription? ignored) =>
+            KeyInstantiator.Construct(type, description, out ignored);
 
-        protected virtual object? InstantiateValue(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
-            ValueInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
+        protected virtual object? InstantiateValue(Type type, IObjectDescription description, out IObjectDescription? ignored) =>
+            ValueInstantiator.Construct(type, description, out ignored);
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            if (instance is null || initializeValues is null)
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            type = instance.GetType();
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
+
+            if (description.IsNullOrEmpty())
             {
-                ignoredInitializeValues = initializeValues;
-                return;
+                ignored = null;
+                return instance;
             }
 
-            var type = instance.GetType();
-            if (!Instantiable(type, null))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
-
-            var initType = initializeValues.GetType();
-            dynamic dyn = initializeValues;
             var types = type.GetKeyValuePairKeyValueType()!.ToArray();
-            void Initialize(object? key, object? value)
+
+            if (description.HasValue)
             {
+                var initType = description.GetType();
+                dynamic pair = description;
+
+                if (initType.IsKeyValuePair())
+                {
+                    instance = Initialize(instance, ObjectDescriptions.Constant((object?)pair.Key), out var keyIgnore,
+                        ObjectDescriptions.Constant((object?)pair.Value), out var valueIgnore);
+
+                    ignored = null;
+                    if (keyIgnore is not null)
+                        ignored = keyIgnore;
+                    if (valueIgnore is not null)
+                        ignored = ignored?.Concat(valueIgnore).Constant() ?? valueIgnore;
+
+                    return instance;
+                }
+            }
+            else if (description.IsWrappedValue())
                 try
                 {
-                    InitializeKey(types[0], instance, key, out _);
+                    return Instantiate(type, description.UnwrapValue(), out ignored);
                 }
                 catch (Exception ex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, $".{nameof(KeyValuePair<string?, object?>.Key)}", ex);
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                 }
-                try
-                {
-                    InitializeValue(types[1], instance, value, out _);
-                }
-                catch (Exception ex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, $".{nameof(KeyValuePair<string?, object?>.Value)}", ex);
-                }
-            }
-            
-            if (initType.IsKeyValuePair())
+            else
             {
-                Initialize(dyn.Key, dyn.Value);
-                ignoredInitializeValues = null;
-                return;
-            }
+                KeyValuePair<string?, IObjectDescription>? key = null;
+                KeyValuePair<string?, IObjectDescription>? value = null;
 
-            if (initializeValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
-            {
-                var has = false;
-                KeyValuePair<string?, object?>? pair = null;
-                var hasKey = false;
-                var hasValue = false;
-                object? key = null;
-                object? value = null;
-
-                foreach (var p in enumerable)
+                foreach (var c in description.Children)
                 {
-                    if (!has && !hasKey && !hasValue && string.IsNullOrEmpty(p.Key))
+                    if (key is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
                     {
-                        has = true;
-                        pair = p;
+                        key = c;
                     }
-                    else if (!has && !hasKey && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
+                    else if (value is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Value), StringComparison.InvariantCultureIgnoreCase))
                     {
-                        hasKey = true;
-                        key = p.Value;
-                    }
-                    else if (!has && !hasValue && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Value), StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        hasValue = true;
-                        value = p.Value;
+                        value = c;
                     }
                     else
-                        throw InstantiationException.GetNoMemberException(type, initializeValues, p.Key);
+                        throw InstantiationException.GetNoMemberException(type, description, c.Key);
                 }
 
-                if (has)
-                    Initialize(pair!.Value.Key, pair.Value.Value);
-                else if (!hasKey || !hasValue)
-                    Initialize(key, value);
-                ignoredInitializeValues = null;
-                return;
+                if (key.HasValue || value.HasValue)
+                {
+                    instance = Initialize(instance, key.HasValue ? key.Value.Value : null, out var keyIgnore,
+                        value.HasValue ? value.Value.Value : null, out var valueIgnore);
+
+                    ignored = null;
+                    if (key is not null && keyIgnore is not null)
+                        ignored = ObjectDescriptions.Constant(key.Value.Key, keyIgnore);
+                    if (value is not null && valueIgnore is not null)
+                        ignored = ignored?.Append(value.Value.Key, valueIgnore).Constant()
+                            ?? ObjectDescriptions.Constant(value.Value.Key, valueIgnore);
+
+                    return instance;
+                }
             }
 
-            throw InstantiationException.GetCanNotInstantiateException(type, initializeValues);
+
+            throw InstantiationException.GetCanNotInstantiateException(type, description);
+
+
+            object Initialize(object instance,
+                IObjectDescription? key, out IObjectDescription? ignoredKey,
+                IObjectDescription? value, out IObjectDescription? ignoredValue)
+            {
+                dynamic pair = instance;
+                try
+                {
+                    object? keyValue;
+                    if (key is null)
+                    {
+                        keyValue = pair.Key;
+                        ignoredKey = null;
+                    }
+                    else
+                        try
+                        {
+                            keyValue = InitializeKey(types[0], pair.Key, key, out ignoredKey);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw InstantiationException.GetCanNotInstantiateException(types[0], key, $".{nameof(KeyValuePair<string?, object?>.Key)}", ex);
+                        }
+                    object? valueValue;
+                    if (value is null)
+                    {
+                        valueValue = pair.Value;
+                        ignoredValue = null;
+                    }
+                    else
+                        try
+                        {
+                            valueValue = InitializeValue(types[1], pair.Value, value, out ignoredValue);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw InstantiationException.GetCanNotInstantiateException(types[1], value, $".{nameof(KeyValuePair<string?, object?>.Value)}", ex);
+                        }
+                    if (ReferenceEquals(pair.Key, keyValue) && ReferenceEquals(pair.Value, valueValue))
+                        return pair;
+                    else
+                        return type.GetNewParameterFunc(types)(new[] { keyValue, valueValue });
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            }
         }
 
-        protected virtual void InitializeKey(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues) =>
-            KeyInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
+        protected virtual object? InitializeKey(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored) =>
+            KeyInstantiator.Initialize(instance, description, out ignored);
 
-        protected virtual void InitializeValue(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues) =>
-            ValueInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
+        protected virtual object? InitializeValue(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored) =>
+            ValueInstantiator.Initialize(instance, description, out ignored);
 
 
     }

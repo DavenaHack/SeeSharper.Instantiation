@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,18 +14,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new BooleanInstantiator();
 
-            Assert.AreEqual(false, instantiator.Construct<bool>("false"));
-            Assert.AreEqual(false, instantiator.Construct<bool>(" false "));
-            Assert.AreEqual(false, instantiator.Construct<bool>(new Dictionary<string, object?> { { "", "false" } }));
+            Assert.AreEqual(false, instantiator.Construct<bool>(ObjectDescriptions.Constant("false")));
+            Assert.AreEqual(false, instantiator.Construct<bool>(ObjectDescriptions.Constant(" false ")));
+            Assert.AreEqual(false, instantiator.Construct<bool>(ObjectDescriptions.Constant("false").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<bool>("abc");
+                instantiator.Construct<bool>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<bool?>(""));
-            Assert.IsNull(instantiator.Construct<bool?>(null));
-            Assert.IsNull(instantiator.Construct<bool?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<bool?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<bool?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<bool?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

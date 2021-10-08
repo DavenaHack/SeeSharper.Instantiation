@@ -1,5 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Mimp.SeeSharper.Instantiation.Abstraction;
 using Mimp.SeeSharper.Instantiation.Test.Mock;
+using Mimp.SeeSharper.ObjectDescription;
 using System.Collections.Generic;
 
 namespace Mimp.SeeSharper.Instantiation.Test
@@ -22,12 +24,10 @@ namespace Mimp.SeeSharper.Instantiation.Test
                     Bar = "bar",
                     Num = "num"
                 }
-                }, (IList<ConstructorMemberObject>)instantiator.Instantiate(typeof(IList<ConstructorMemberObject>), new Dictionary<string, object?>
-                {
-                    { nameof(ConstructorMemberObject.Prop), "prop" },
-                    { nameof(ConstructorMemberObject.Bar), "bar" },
-                    { nameof(ConstructorMemberObject.Num), "num" },
-                }, out _)!);
+            }, instantiator.Instantiate<IList<ConstructorMemberObject>>(ObjectDescriptions.EmptyDescription
+                    .Append(nameof(ConstructorMemberObject.Prop), "prop")
+                    .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                    .Append(nameof(ConstructorMemberObject.Num), "num").Constant(), out _)!);
 
 
             CheckEquals(new List<ConstructorMemberObject> {
@@ -36,29 +36,22 @@ namespace Mimp.SeeSharper.Instantiation.Test
                     Bar = "bar",
                     Num = "num"
                 }
-                }, (IList<ConstructorMemberObject>)instantiator.Instantiate(typeof(IList<ConstructorMemberObject>), new Dictionary<string, object?>
-                {
-                    { "0", new Dictionary<string, object?> {
-                        { nameof(ConstructorMemberObject.Prop), "prop" },
-                        { nameof(ConstructorMemberObject.Bar), "bar" },
-                        { nameof(ConstructorMemberObject.Num), "num" },
-                    } }
-                }, out _)!);
+            }, instantiator.Instantiate<IList<ConstructorMemberObject>>(ObjectDescriptions.EmptyDescription
+                    .Append("0", ObjectDescriptions.EmptyDescription
+                        .Append(nameof(ConstructorMemberObject.Prop), "prop")
+                        .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                        .Append(nameof(ConstructorMemberObject.Num), "num")), out _)!);
 
 
             CheckEquals(new List<ConstructorMemberObject> {
                 new ConstructorMemberObject("num", "bar"),
                 new ConstructorMemberObject("prop")
-                }, (IList<ConstructorMemberObject>)instantiator.Instantiate(typeof(IList<ConstructorMemberObject>), new Dictionary<string, object?>
-                {
-                    { "0", new Dictionary<string, object?> {
-                        { nameof(ConstructorMemberObject.Bar), "bar" },
-                        { nameof(ConstructorMemberObject.Num), "num" },
-                    } },
-                    { "1", new Dictionary<string, object?> {
-                        { nameof(ConstructorMemberObject.Prop), "prop" },
-                    } }
-                }, out _)!);
+            }, instantiator.Instantiate<IList<ConstructorMemberObject>>(ObjectDescriptions.EmptyDescription
+                    .Append("0", ObjectDescriptions.EmptyDescription
+                        .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                        .Append(nameof(ConstructorMemberObject.Num), "num"))
+                    .Append("1", ObjectDescriptions.EmptyDescription
+                        .Append(nameof(ConstructorMemberObject.Prop), "prop")), out _)!);
 
 
         }
@@ -70,22 +63,16 @@ namespace Mimp.SeeSharper.Instantiation.Test
             var instanceInstantiator = new ConstructorMemberInstantiator(new StringInstantiator());
             var instantiator = new ListInstantiator(instanceInstantiator, instanceInstantiator);
 
-            var list = instantiator.Instantiate(typeof(IList<ConstructorMemberObject>), new Dictionary<string, object?>
-                {
-                    { "0", new Dictionary<string, object?> {
-                        { nameof(ConstructorMemberObject.Prop), "prop" },
-                    } }
-                }, out _)!;
-            instantiator.Initialize(list, new Dictionary<string, object?> {
-                { "0", new Dictionary<string, object?> {
-                    { nameof(ConstructorMemberObject.Bar), "bar" },
-                    { nameof(ConstructorMemberObject.Num), "num" },
-                } },
-                { "1", new Dictionary<string, object?> {
-                    { nameof(ConstructorMemberObject.Bar), "bar" },
-                    { nameof(ConstructorMemberObject.Num), "num" },
-                } }
-            }, out _);
+            var list = instantiator.Instantiate<IList<ConstructorMemberObject>>(ObjectDescriptions.EmptyDescription
+                .Append("0", ObjectDescriptions.EmptyDescription
+                    .Append(nameof(ConstructorMemberObject.Prop), "prop")), out _)!;
+            instantiator.Initialize(list, ObjectDescriptions.EmptyDescription
+                .Append("0", ObjectDescriptions.EmptyDescription
+                    .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                    .Append(nameof(ConstructorMemberObject.Num), "num"))
+                .Append("1", ObjectDescriptions.EmptyDescription
+                    .Append(nameof(ConstructorMemberObject.Bar), "bar")
+                    .Append(nameof(ConstructorMemberObject.Num), "num")), out _);
 
             CheckEquals(new List<ConstructorMemberObject> {
                 new ConstructorMemberObject("prop")
@@ -94,7 +81,7 @@ namespace Mimp.SeeSharper.Instantiation.Test
                     Num = "num"
                 },
                 new ConstructorMemberObject("prop")
-                }, (IList<ConstructorMemberObject>)list);
+            }, list);
 
 
         }

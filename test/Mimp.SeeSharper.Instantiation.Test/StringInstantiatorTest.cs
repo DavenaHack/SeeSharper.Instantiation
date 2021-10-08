@@ -1,6 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,9 +13,9 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new StringInstantiator();
 
-            Assert.AreEqual("abc", instantiator.Construct<string>("abc"));
-            Assert.AreEqual("abc", instantiator.Construct<string>(new Dictionary<string, object?> { { "", "abc" } }));
-            Assert.AreEqual(null, instantiator.Construct<string>(new Dictionary<string, object?>()));
+            Assert.AreEqual("abc", instantiator.Construct<string>(ObjectDescriptions.Constant("abc")));
+            Assert.AreEqual("abc", instantiator.Construct<string>(ObjectDescriptions.Constant("abc").WrapValue()));
+            Assert.AreEqual(null, instantiator.Construct<string>(ObjectDescriptions.EmptyDescription));
         }
 
 

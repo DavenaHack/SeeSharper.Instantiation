@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,18 +14,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new FloatInstantiator();
 
-            Assert.AreEqual(12345.6789f, instantiator.Construct<float>("12345.6789"));
-            Assert.AreEqual(12345.6789f, instantiator.Construct<float>(" 12345.6789 "));
-            Assert.AreEqual(12345.6789f, instantiator.Construct<float>(new Dictionary<string, object?> { { "", "12345.6789" } }));
+            Assert.AreEqual(12345.6789f, instantiator.Construct<float>(ObjectDescriptions.Constant("12345.6789")));
+            Assert.AreEqual(12345.6789f, instantiator.Construct<float>(ObjectDescriptions.Constant(" 12345.6789 ")));
+            Assert.AreEqual(12345.6789f, instantiator.Construct<float>(ObjectDescriptions.Constant("12345.6789").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<float>("abc");
+                instantiator.Construct<float>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<float?>(""));
-            Assert.IsNull(instantiator.Construct<float?>(null));
-            Assert.IsNull(instantiator.Construct<float?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<float?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<float?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<float?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

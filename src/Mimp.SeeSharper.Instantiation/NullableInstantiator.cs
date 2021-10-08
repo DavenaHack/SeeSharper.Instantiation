@@ -1,8 +1,8 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
@@ -22,54 +22,56 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
-            return type.IsNullable() && Instantiator.Instantiable(type.GetNullableValueType()!, instantiateValues);
+            return type.IsNullable() && Instantiator.Instantiable(type.GetNullableValueType()!, description);
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
-
-            if (instantiateValues is null)
-            {
-                ignoredInstantiateValues = null;
-                return type.Default();
-            }
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
             try
             {
-                return Instantiator.Instantiate(type.GetNullableValueType()!, instantiateValues, out ignoredInstantiateValues);
+                return Instantiator.Instantiate(type.GetNullableValueType()!, description, out ignored);
             }
-            catch (Exception ex)
+            catch
             {
-                if (instantiateValues is string str && string.IsNullOrWhiteSpace(str)
-                    || instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable && (
-                        !enumerable.Any()
-                        || !enumerable.Skip(1).Any()
-                            && string.IsNullOrEmpty(enumerable.First().Key)
-                            && enumerable.First().Value is string value && string.IsNullOrWhiteSpace(value)
-                    ))
+                description = description.IsWrappedValue() ? description.UnwrapValue() : description;
+                if (description.IsNullOrEmpty() ||
+                    description.HasValue && description.Value is string s && string.IsNullOrWhiteSpace(s))
                 {
-                    ignoredInstantiateValues = null;
+                    ignored = null;
                     return type.Default();
                 }
 
-                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                throw;
             }
         }
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            Instantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            return Instantiator.Initialize(type, instance, description, out ignored);
         }
 
 

@@ -1,3 +1,7 @@
+[submodule "libs/ObjectDescription"]
+	path = libs/ObjectDescription
+	url = https://github.com/DavenaHack/SeeSharper.ObjectDescription.git
+	branch = master
 [submodule "libs/Reflection"]
 	path = libs/Reflection
 	url = https://github.com/DavenaHack/SeeSharper.Reflection.git

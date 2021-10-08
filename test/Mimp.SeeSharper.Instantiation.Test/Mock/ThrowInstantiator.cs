@@ -1,4 +1,5 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using System;
 
 namespace Mimp.SeeSharper.Instantiation.Test.Mock
@@ -6,17 +7,18 @@ namespace Mimp.SeeSharper.Instantiation.Test.Mock
     public class ThrowInstantiator : IInstantiator
     {
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInitializeValues = initializeValues;
+            ignored = description;
+            return instance;
         }
 
-        public bool Instantiable(System.Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             return true;
         }
 
-        public object? Instantiate(System.Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             throw new NotImplementedException();
         }

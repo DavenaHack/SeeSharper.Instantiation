@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
@@ -18,99 +20,127 @@ namespace Mimp.SeeSharper.Instantiation
 
         public bool TryDefaultInstance { get; }
 
+        public bool UseDefaultParameter { get; }
 
-        public ConstructorInstantiator(IInstantiator parameterInstantiator, bool tryDefaultInstance)
+
+        public ConstructorInstantiator(IInstantiator parameterInstantiator, bool tryDefaultInstance, bool useDefaultParameter)
         {
             ParameterInstantiator = parameterInstantiator ?? throw new ArgumentNullException(nameof(parameterInstantiator));
             TryDefaultInstance = tryDefaultInstance;
+            UseDefaultParameter = useDefaultParameter;
         }
 
         public ConstructorInstantiator(IInstantiator parameterInstantiator)
-            : this(parameterInstantiator, true) { }
+            : this(parameterInstantiator, true, true) { }
 
 
-        public virtual bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             return type.IsValueType || !type.IsAbstract && type.GetConstructors().Length > 0;
         }
 
 
-        public virtual object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (instantiateValues is null)
-            {
-                ignoredInstantiateValues = null;
-                return GetDefault(type);
-            }
+            if (description.IsNull())
+                return GetDefault(type, description, out ignored);
 
-            var constructors = GetConstructors(type, instantiateValues, out var ignoredValues);
+            var constructors = GetConstructors(type, description, out ignored);
             var exceptions = new List<Exception>();
 
             foreach (var constructor in constructors)
-            {
                 try
                 {
-                    var parameters = GetParameters(type, constructor, ignoredValues, out var values);
-                    var instance = constructor.Invoke(parameters);
-                    InstantiateInstance(instance, values, out values);
-                    ignoredInstantiateValues = values;
+                    var instance = constructor.Invoke(GetParameters(type, constructor, ignored ?? ObjectDescriptions.EmptyDescription, out var ignore));
+                    InstantiateInstance(instance, ignore ?? ObjectDescriptions.EmptyDescription, out ignore);
+                    ignored = ignore;
                     return instance;
                 }
                 catch (Exception ex)
                 {
                     exceptions.Add(ex);
                 }
-            }
-            if (exceptions.Count > 0)
-                throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, exceptions);
 
-            if (type.IsValueType)
+            try
             {
-                ignoredInstantiateValues = instantiateValues;
-                return GetDefault(type);
+                var def = GetDefault(type, description, out ignored);
+                if (def is null)
+                    return def;
+                InstantiateInstance(def, ignored ?? ObjectDescriptions.EmptyDescription, out ignored);
+                return def;
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
             }
 
-            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+            if (exceptions.Count > 0)
+                throw InstantiationException.GetCanNotInstantiateException(type, description, exceptions);
+
+            throw InstantiationException.GetCanNotInstantiateException(type, description);
         }
 
 
-        protected virtual object? GetDefault(Type type)
+        protected virtual object? GetDefault(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
-            if (TryDefaultInstance)
-                try
-                {
-                    foreach (var constructor in GetConstructors(type, null, out _))
-                        try
-                        {
-                            return constructor.Invoke(GetParameters(type, constructor, null, out _));
-                        }
-                        catch { }
-                }
-                catch { }
+            var exceptions = new List<Exception>();
+            try
+            {
+                if (TryDefaultInstance)
+                    try
+                    {
+                        foreach (var constructor in GetConstructors(type, ObjectDescriptions.NullDescription, out _))
+                            try
+                            {
+                                return constructor.Invoke(GetParameters(type, constructor, ObjectDescriptions.NullDescription, out _));
+                            }
+                            catch (Exception ex)
+                            {
+                                exceptions.Add(new InstantiationException(type, description, null, $"Can't call default constructor {constructor}", ex));
+                            }
+                    }
+                    catch (Exception ex)
+                    {
+                        exceptions.Add(new InstantiationException(type, description, null, $"Can't get default constructor for {type}", ex));
+                    }
 
-            return type.Default();
+                return type.Default();
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+                throw new InstantiationException(type, description, null, $"Can't get default for {type}", exceptions);
+            }
+            finally
+            {
+                ignored = description.IsNullOrEmpty() ? null : description;
+            }
         }
 
 
-        protected virtual IEnumerable<ConstructorInfo> GetConstructors(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        protected virtual IEnumerable<ConstructorInfo> GetConstructors(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInstantiateValues = instantiateValues;
+            ignored = description;
 
             var constructors = type.GetConstructors();
 
-            if (instantiateValues is null)
+            if (description.IsNullOrEmpty())
                 return constructors.OrderBy(c => c.GetParameters().Length);
 
-            if (instantiateValues is not IEnumerable<KeyValuePair<string?, object?>> parameters)
-                parameters = new[] { new KeyValuePair<string?, object?>(null, instantiateValues) };
+            if (description.HasValue)
+                description = description.WrapValue();
 
             var hasNameMatching = false;
             var matches = constructors.Select(constructor =>
@@ -122,7 +152,7 @@ namespace Mimp.SeeSharper.Instantiation
                 foreach (var p in paras)
                 {
                     var nameFound = false;
-                    foreach (var pair in parameters)
+                    foreach (var pair in description.Children)
                     {
                         if (usedParas.Contains(p))
                             continue;
@@ -152,7 +182,7 @@ namespace Mimp.SeeSharper.Instantiation
                 foreach (var c in constructors)
                 {
                     var paras = c.GetParameters();
-                    if (paras.Length == 1 && instantiateValues.GetType().InheritOrAssignable(paras[0].ParameterType))
+                    if (paras.Length == 1 && description.GetType().InheritOrAssignable(paras[0].ParameterType))
                         return new[] { c };
                 }
 
@@ -172,94 +202,126 @@ namespace Mimp.SeeSharper.Instantiation
             return matches.Select(m => m.Constructor).ToArray();
         }
 
-        protected virtual object?[] GetParameters(Type type, ConstructorInfo constructor, object? instantiateValues, out object? ignoredInstantiateValues)
+
+        protected virtual object?[] GetParameters(Type type, ConstructorInfo constructor, IObjectDescription description, out IObjectDescription? ignored)
         {
-            object? createParameter(ParameterInfo parameter, object? values, out object? ignoredValues)
+            object? createParameter(ParameterInfo parameter, IObjectDescription description, out IObjectDescription? ignored)
             {
                 object? def = null;
                 bool hasDef = false;
-                if (parameter.HasDefaultValue && (values is null || values is IEnumerable<KeyValuePair<string?, object?>> keyValues && !keyValues.Any()))
+                if (UseDefaultParameter && parameter.HasDefaultValue && description.IsNullOrEmpty())
                 {
                     def = parameter.DefaultValue;
                     hasDef = true;
                 }
                 try
                 {
-                    var result = ConstructConstructorParameter(parameter.ParameterType, values, out ignoredValues);
+                    var result = ConstructConstructorParameter(parameter.ParameterType, description, out ignored);
                     if (hasDef && Equals(result, parameter.ParameterType.Default()))
+                    {
+                        ignored = null;
                         return def;
+                    }
                     return result;
                 }
                 catch (Exception ex)
                 {
                     if (hasDef)
                     {
-                        ignoredValues = null;
+                        ignored = null;
                         return def;
                     }
-                    throw InstantiationException.GetCanNotInstantiateParameterException(type, values, constructor, parameter, ex);
+                    throw InstantiationException.GetCanNotInstantiateParameterException(type, description, constructor, parameter, ex);
                 }
             }
 
             var parameters = constructor.GetParameters();
 
-            if (instantiateValues is null)
-                instantiateValues = Array.Empty<KeyValuePair<string?, object?>>();
+            description = description.IsWrappedValue() ? description.UnwrapValue() : description;
 
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> values)
-            {
-                if (parameters.Length == 1)
+            var exceptions = new List<Exception>();
+
+            if (parameters.Length == 1 && description.HasValue)
+                try
                 {
-                    var p = parameters[0];
-                    foreach (var pair in values)
-                        if (string.Equals(p.Name, pair.Key, StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            ignoredInstantiateValues = values.Where(p => p.Key != pair.Key).ToArray();
-                            return new[] { createParameter(p, pair.Value, out _) };
-                        }
-                    return new[] { createParameter(p, instantiateValues, out ignoredInstantiateValues) };
+                    return new[] { createParameter(parameters[0], description, out ignored) };
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
                 }
 
+            if (description.HasValue || description.IsWrappedValue())
+                description = description.IsNull() ? ObjectDescriptions.EmptyDescription
+                    : description.WrapValue();
+
+            try
+            {
                 var paras = new object?[parameters.Length];
-                var ignoredValues = values.ToList();
+                ignored = description.Constant();
+
                 for (var i = 0; i < parameters.Length; i++)
                 {
-                    var p = parameters[i];
+                    var param = parameters[i];
+                    var name = param.Name;
                     var created = false;
-                    foreach (var pair in values)
-                        if (string.Equals(p.Name, pair.Key, StringComparison.InvariantCultureIgnoreCase))
+                    foreach (var pair in ignored.Children)
+                        if (string.Equals(param.Name, pair.Key, StringComparison.InvariantCultureIgnoreCase))
                         {
-                            paras[i] = createParameter(p, pair.Value, out _);
-                            ignoredValues.Remove(pair);
+                            paras[i] = createParameter(param, pair.Value, out var ignore);
+                            ignored = ignored.Remove(pair);
+                            if (ignore is not null)
+                                ignored = ignored.Append(pair.Key, ignore);
                             created = true;
                             break;
                         }
                     if (!created)
-                        paras[i] = createParameter(p, null, out _);
+                        paras[i] = createParameter(param, ObjectDescriptions.NullDescription, out _);
                 }
 
-                ignoredInstantiateValues = ignoredValues;
+                ignored = ignored.IsNullOrEmpty() ? null : ignored.Constant();
                 return paras;
             }
-            else if (parameters.Length == 1)
-                return new[] { createParameter(parameters[0], instantiateValues, out ignoredInstantiateValues) };
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
+            }
 
-            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+            if (parameters.Length == 1)
+                try
+                {
+                    return new[] { createParameter(parameters[0], description, out ignored) };
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+
+            throw InstantiationException.GetCanNotInstantiateException(type, description, exceptions);
         }
 
-        protected virtual object? ConstructConstructorParameter(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
-            ParameterInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
 
+        protected virtual object? ConstructConstructorParameter(Type type, IObjectDescription description, out IObjectDescription? ignored) =>
+            ParameterInstantiator.Construct(type, description, out ignored);
 
-        protected virtual void InstantiateInstance(object instance, object? instantiateValues, out object? ignoredInstantiateValues)
+        protected virtual void InstantiateInstance(object instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInstantiateValues = instantiateValues;
+            ignored = description.IsNullOrEmpty() ? null : description;
         }
 
 
-        public virtual void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public virtual object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInitializeValues = initializeValues;
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            ignored = description.IsNullOrEmpty() ? null : description;
+            return instance;
         }
 
 

@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
@@ -41,44 +43,52 @@ namespace Mimp.SeeSharper.Instantiation
             : this(Array.Empty<IInstantiator>()) { }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             foreach (var i in Instantiators)
-                if (i.Instantiable(type, instantiateValues))
+                if (i.Instantiable(type, description))
                     return true;
             return false;
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
             foreach (var instantiator in Instantiators)
-                if (instantiator.Instantiable(type, instantiateValues))
+                if (instantiator.Instantiable(type, description))
                     try
                     {
-                        var instance = instantiator.Instantiate(type, instantiateValues, out var ignoreValues);
-                        ignoredInstantiateValues = ignoreValues;
+                        var instance = instantiator.Instantiate(type, description, out ignored);
                         if (instance is not null)
                             _initializes.Add(new KeyValuePair<object, IInstantiator>(instance, instantiator));
                         return instance;
                     }
                     catch { }
 
-            ignoredInstantiateValues = instantiateValues;
+            ignored = description.IsNullOrEmpty() ? null : description;
             return type.Default();
         }
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
             if (instance is null)
-            {
-                ignoredInitializeValues = initializeValues;
-                return;
-            }
+                return Instantiate(type, description, out ignored);
 
             IInstantiator? instantiator = null;
             lock (_initializes)
@@ -91,11 +101,19 @@ namespace Mimp.SeeSharper.Instantiation
                         break;
                     }
             }
+            if (instantiator is not null)
+                return instantiator.Initialize(instance, description, out ignored);
 
-            if (instantiator is null)
-                throw new InstantiationException(instance.GetType(), initializeValues, null, $@"""{instance}"" isn't instantiate from ""{this}""");
+            foreach (var inst in Instantiators)
+                if (inst.Instantiable(type, description))
+                    try
+                    {
+                        return inst.Instantiate(type, description, out ignored);
+                    }
+                    catch { }
 
-            instantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
+            ignored = description.IsNullOrEmpty() ? null : description;
+            return instance;
         }
 
 

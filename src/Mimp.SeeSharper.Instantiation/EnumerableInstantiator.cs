@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections;
@@ -27,75 +29,81 @@ namespace Mimp.SeeSharper.Instantiation
         }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             return type == typeof(IEnumerable)
                 || type == typeof(IEnumerable<>)
                 || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>)
-                || type.IsIEnumerable() && InstanceInstantiator.Instantiable(type, instantiateValues);
+                || type.IsIEnumerable() && InstanceInstantiator.Instantiable(type, description);
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
             if (type == typeof(IEnumerable) || type == typeof(IEnumerable<>) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
             {
                 type = typeof(List<>).MakeGenericType(type.GetIEnumerableValueType() ?? typeof(object));
-                if (TryInstantiateEnumerableConstructor(type, instantiateValues, InstantiateValue, out ignoredInstantiateValues, out var inits))
+                if (TryInstantiateEnumerableConstructor(type, description, InstantiateValue, out ignored, out var inits))
                     return inits;
             }
 
-            return Instantiate(type, instantiateValues, InstanceInstantiator, InstantiateValue, out ignoredInstantiateValues);
+            return Instantiate(type, description, InstanceInstantiator, InstantiateValue, out ignored);
         }
 
-        protected virtual object? InstantiateValue(Type type, object? initializeValues, out object? ignoreInitializeValues) =>
-            ValueInstantiator.Construct(type, initializeValues, out ignoreInitializeValues);
+        protected virtual object? InstantiateValue(Type type, IObjectDescription description, out IObjectDescription? ignored) =>
+            ValueInstantiator.Construct(type, description, out ignored);
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            type = instance.GetType();
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
+
+            return Initialize(type, (IEnumerable)instance, description, InstanceInstantiator, InitializeValue, out ignored);
+        }
+
+        protected virtual object? InitializeValue(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (instance is null)
-            {
-                ignoredInitializeValues = initializeValues;
-                return;
-            }
+                return ValueInstantiator.Construct(type, description, out ignored);
 
-            var type = instance.GetType();
-            if (!Instantiable(type, null))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
-
-            Initialize(type, (IEnumerable)instance, initializeValues, InstanceInstantiator, InitializeValue, out ignoredInitializeValues);
-        }
-
-        protected virtual object? InitializeValue(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)
-        {
-            if (instance is null)
-                return ValueInstantiator.Construct(type, initializeValues, out ignoredInitializeValues);
-
-            ValueInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            return instance;
+            return ValueInstantiator.Initialize(type, instance, description, out ignored);
         }
 
 
-        internal static bool TryInstantiateEnumerableConstructor(Type type, object? instantiateValues, InstantiateDelegate instantiateValue, out object? ignoredInstantiateValues, out IEnumerable? instance)
+        internal static bool TryInstantiateEnumerableConstructor(Type type,
+            IObjectDescription description, InstantiateDelegate instantiateValue,
+            out IObjectDescription? ignored, out IEnumerable? instance)
         {
-            if (instantiateValues is null)
+            if (description.IsNull())
             {
                 instance = null;
-                ignoredInstantiateValues = instantiateValues;
-                return false;
+                ignored = null;
+                return true;
             }
-            var enumerable = WrapInstantiateValues(type, instantiateValues, out var wrapped);
-
             var valueType = type.GetIEnumerableValueType() ?? typeof(object);
+
             ConstructorInfo? constructor = null;
             foreach (var c in type.GetConstructors())
             {
@@ -115,312 +123,282 @@ namespace Mimp.SeeSharper.Instantiation
             if (constructor is null)
             {
                 instance = null;
-                ignoredInstantiateValues = instantiateValues;
+                ignored = description;
                 return false;
             }
 
-            var tempList = new List<object?>();
+            var exceptions = new List<Exception>();
             try
             {
-                foreach (var v in UnwrapKeyValuePair(enumerable, valueType))
-                    try
-                    {
-                        tempList.Add(instantiateValue(valueType, v, out _));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $"[{tempList.Count}]", ex);
-                    }
+                if (SeperateMembersAndElements(description, out var members, out var elements)
+                    && members.IsNullOrEmpty())
+                    return Create(valueType, elements, out ignored, out instance);
             }
             catch (Exception ex)
             {
-                if (wrapped)
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-                try
-                {
-                    tempList = new List<object?>
-                    {
-                        instantiateValue(valueType, instantiateValues, out _)
-                    };
-                }
-                catch (Exception sex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, new Exception[] {
-                        ex,
-                        InstantiationException.GetCanNotInstantiateException(type, instantiateValues, "[0]", sex)
-                    });
-                }
+                exceptions.Add(ex);
+            }
+            try
+            {
+                if (SeperateMembersAndElements(UnifyEnumerable(description), out var members, out var elements)
+                    && members.IsNullOrEmpty())
+                    return Create(valueType, elements, out ignored, out instance);
+            }
+            catch (Exception ex)
+            {
+                exceptions.Add(ex);
             }
 
-            var value = (IList)typeof(List<>).MakeGenericType(valueType).New();
-            foreach (var t in tempList)
-                value.Add(t);
+            throw InstantiationException.GetCanNotInstantiateException(type, description, exceptions);
 
-            instance = (IEnumerable)constructor.GetParamsFunc()(value);
-            ignoredInstantiateValues = null;
-            return true;
+            bool Create(Type valueType, IObjectDescription elements, out IObjectDescription? ignored, out IEnumerable instance)
+            {
+                ignored = elements;
+                var tempList = new List<object?>();
+                try
+                {
+                    foreach (var e in elements.Children)
+                        try
+                        {
+                            tempList.Add(instantiateValue(valueType, e.Value, out var ig));
+                            ignored = ignored.Remove(e);
+                            if (ig is not null)
+                                ignored = ignored.Append(e.Key, ig);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw InstantiationException.GetCanNotInstantiateException(type, e.Value.Children.First().Value, $"[{tempList.Count}]", ex);
+                        }
+
+                    var value = (IList)typeof(List<>).MakeGenericType(valueType).New();
+                    foreach (var t in tempList)
+                        value.Add(t);
+
+                    ignored = ignored.IsNullOrEmpty() ? null : ignored.Constant();
+                    instance = (IEnumerable)constructor.GetParamsFunc()(value);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            }
         }
 
 
-        internal static object? Instantiate(Type type, object? instantiateValues, IInstantiator instanceInstantiator, InstantiateDelegate instantiateValue, out object? ignoredInstantiateValues)
+        internal static object? Instantiate(Type type, IObjectDescription description,
+            IInstantiator instanceInstantiator, InstantiateDelegate instantiateValue, out IObjectDescription? ignored)
         {
-            try
-            {
-                var instance = (IEnumerable?)instanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
-                if (instance is null)
-                    return null;
-
-                InstantiateInstance(type, instance, ignoredInstantiateValues, instantiateValue, out ignoredInstantiateValues);
-
-                return instance;
-            }
-            catch (Exception ex)
-            {
-                if (!SeperateInstantiateValues(type, instantiateValues, out ignoredInstantiateValues, out var elements))
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-
+            Exception? originEx = null;
+            if (SeperateMembersAndElements(description, out var members, out var elements))
                 try
                 {
-                    var instance = (IEnumerable?)instanceInstantiator.Instantiate(type, ignoredInstantiateValues, out ignoredInstantiateValues);
+                    var instance = (IEnumerable?)instanceInstantiator.Instantiate(type, members, out ignored);
                     if (instance is null)
+                    {
+                        ignored = ignored?.Concat(elements) ?? (elements.IsNullOrEmpty() ? null : elements);
                         return null;
+                    }
 
-                    if (ignoredInstantiateValues is not null
-                        && ignoredInstantiateValues is IEnumerable ie && ie.Cast<object>().Any())
-                        throw new InstantiationException(type, instantiateValues, null, $"{instanceInstantiator} don't use {ie}");
-
-                    InstantiateInstance(type, instance, elements, instantiateValue, out ignoredInstantiateValues);
+                    InstantiateInstance(instance, elements, out var ignore);
+                    if (ignore is not null)
+                        ignored = ignored?.Concat(ignore) ?? ignore;
 
                     return instance;
                 }
-                catch (Exception sex)
+                catch (Exception ex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, new Exception[] { ex, sex });
+                    originEx = ex;
                 }
-            }
-        }
 
-        internal static void InstantiateInstance(Type type, IEnumerable instance, object? instantiateValues, InstantiateDelegate instantiateValue, out object? ignoredInstantiateValues)
-        {
-            var instanceType = instance.GetType();
-            if (!instanceType.IsICollection())
-            {
-                ignoredInstantiateValues = instantiateValues;
-                return;
-            }
-            var enumerable = WrapInstantiateValues(type, instantiateValues, out var wrapped);
-
-            var add = instanceType.GetICollectionType().GetInstanceMemberInvokeDelegate<Action<object, object?>>(nameof(ICollection<object>.Add), 1);
-            var count = instanceType.GetICollectionType().GetInstanceMemberAccessDelegate<Func<object, int>>(nameof(ICollection.Count));
-
-            var valueType = instance.GetType().GetIEnumerableValueType()!;
-            var tempList = new List<object?>();
             try
             {
-                foreach (var e in UnwrapKeyValuePair(enumerable, valueType))
-                    try
-                    {
-                        tempList.Add(instantiateValue(valueType, e, out _));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, $"[{count(instance) + tempList.Count}]", ex);
-                    }
+                return (IEnumerable?)instanceInstantiator.Instantiate(type, description, out ignored);
             }
             catch (Exception ex)
             {
-                if (wrapped)
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-                try
-                {
-                    tempList = new List<object?>
-                    {
-                        instantiateValue(valueType, instantiateValues, out _)
-                    };
-                }
-                catch (Exception sex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, new Exception[] {
-                        ex,
-                        InstantiationException.GetCanNotInstantiateException(type, instantiateValues,  $"[{count(instance)}]", sex)
-                    });
-                }
+                throw InstantiationException.GetCanNotInstantiateException(type, description, originEx is null ? new[] { ex } : new[] { originEx, ex });
             }
 
-            foreach (var t in tempList)
-                add(instance, t);
-
-            ignoredInstantiateValues = null;
-        }
-
-
-        internal static void Initialize(Type type, IEnumerable instance, object? initializeValues, IInstantiator instanceInstantiator, InitializeDelegate initializeValue, out object? ignoredInitializeValues)
-        {
-            try
+            void InstantiateInstance(IEnumerable instance, IObjectDescription elements, out IObjectDescription? ignored)
             {
-                instanceInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-                InitializeInstance(instance, ignoredInitializeValues, initializeValue, out ignoredInitializeValues);
-            }
-            catch (Exception ex)
-            {
-                if (!SeperateInstantiateValues(type, initializeValues, out ignoredInitializeValues, out var elements))
-                    throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, ex);
-
-                try
+                var instanceType = instance.GetType();
+                if (!instanceType.IsICollection())
                 {
-                    instanceInstantiator.Initialize(instance, ignoredInitializeValues, out ignoredInitializeValues);
-
-                    if (ignoredInitializeValues is not null
-                        && ignoredInitializeValues is IEnumerable ie && ie.Cast<object>().Any())
-                        throw new InstantiationException(type, initializeValues, null, $"{instanceInstantiator} don't use {ie}");
-
-                    InitializeInstance(instance, elements, initializeValue, out ignoredInitializeValues);
-                }
-                catch (Exception sex)
-                {
-                    throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, new Exception[] { ex, sex });
-                }
-            }
-        }
-
-        internal static void InitializeInstance(IEnumerable instance, object? initializeValues, InitializeDelegate initializeValue, out object? ignoredInitializeValues)
-        {
-            var type = instance.GetType();
-            var enumerable = WrapInstantiateValues(type, initializeValues, out var wrapped);
-
-            var valueType = instance.GetType().GetIEnumerableValueType()!;
-            try
-            {
-                var enumerator = UnwrapKeyValuePair(enumerable, valueType).GetEnumerator();
-                var instanceEnumerator = instance.GetEnumerator();
-                while (enumerator.MoveNext() && instanceEnumerator.MoveNext())
-                    initializeValue(valueType, instanceEnumerator.Current, enumerator.Current, out _);
-
-                if (!type.IsICollection())
-                {
-                    if (!enumerator.MoveNext())
-                        ignoredInitializeValues = null;
-                    else
-                    {
-                        IList ignoredValues = enumerator is IEnumerator<KeyValuePair<string?, object?>>
-                            ? new List<KeyValuePair<string?, object?>>() : new List<object?>();
-                        do
-                            ignoredValues.Add(enumerator.Current);
-                        while (enumerator.MoveNext());
-                        ignoredInitializeValues = ignoredValues;
-                    }
+                    ignored = elements;
                     return;
                 }
+                elements = UnifyEnumerable(elements);
 
-                var add = type.GetICollectionType().GetInstanceMemberInvokeDelegate<Action<object, object?>>(nameof(ICollection<object>.Add), 1);
-                var count = type.GetICollectionType().GetInstanceMemberAccessDelegate<Func<object, int>>(nameof(ICollection.Count));
+                var add = instanceType.GetICollectionType().GetInstanceMemberInvokeDelegate<Action<object, object?>>(nameof(ICollection<object>.Add), 1);
+                var count = instanceType.GetICollectionType().GetInstanceMemberAccessDelegate<Func<object, int>>(nameof(ICollection.Count));
 
-                while (enumerator.MoveNext())
-                    try
-                    {
-                        add(instance, initializeValue(valueType, null, enumerator.Current, out _));
-                    }
-                    catch (Exception ex)
-                    {
-                        throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, $"[{count(instance)}]", ex);
-                    }
+                var valueType = instanceType.GetIEnumerableValueType()!;
+                var tempList = new List<object?>();
+                ignored = elements;
+                try
+                {
+                    foreach (var e in elements.Children)
+                        try
+                        {
+                            tempList.Add(instantiateValue(valueType, e.Value, out var ig));
+                            ignored = ignored.Remove(e);
+                            if (ig is not null)
+                                ignored = ignored.Append(e.Key, ig);
+                        }
+                        catch (Exception ex)
+                        {
+                            throw InstantiationException.GetCanNotInstantiateException(type, elements, $"[{count(instance) + tempList.Count}]", ex);
+                        }
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, elements, ex);
+                }
+
+                foreach (var t in tempList)
+                    add(instance, t);
+
+                ignored = ignored.IsNullOrEmpty() ? null : ignored.Constant();
             }
-            catch (Exception ex)
-            {
-                throw InstantiationException.GetCanNotInstantiateException(type, initializeValues, ex);
-            }
-
-            ignoredInitializeValues = null;
         }
 
 
-        internal static bool SeperateInstantiateValues(Type type, object? instantiateValues, out object? instanceValues, out IEnumerable? enumerable)
+        internal static IEnumerable Initialize(Type type, IEnumerable instance, IObjectDescription description,
+            IInstantiator instanceInstantiator, InitializeDelegate initializeValue, out IObjectDescription? ignored)
         {
-            if (instantiateValues is not IEnumerable enumValues)
+            Exception? originEx = null;
+            if (SeperateMembersAndElements(description, out var members, out var elements))
+                try
+                {
+                    instance = (IEnumerable)instanceInstantiator.Initialize(type, instance, members, out ignored)!;
+
+                    instance = InitializeInstance(instance, elements, out var ignore);
+                    if (ignore is not null)
+                        ignored = ignored?.Concat(ignore) ?? ignore;
+
+                    return instance;
+                }
+                catch (Exception ex)
+                {
+                    originEx = ex;
+                }
+
+            try
             {
-                instanceValues = instantiateValues;
-                enumerable = null;
+                return (IEnumerable)instanceInstantiator.Initialize(type, instance, description, out ignored)!;
+            }
+            catch (Exception ex)
+            {
+                throw InstantiationException.GetCanNotInstantiateException(type, description, originEx is null ? new[] { ex } : new[] { originEx, ex });
+            }
+
+            IEnumerable InitializeInstance(IEnumerable instance, IObjectDescription elements, out IObjectDescription? ignored)
+            {
+                var valueType = instance.GetType().GetIEnumerableValueType()!;
+
+
+                var add = type.IsICollection() ? type.GetICollectionType().GetInstanceMemberInvokeDelegate<Action<object, object?>>(nameof(ICollection<object>.Add), 1) : null;
+                var remove = type.IsICollection() ? type.GetICollectionType().GetInstanceMemberInvokeDelegate<Func<object, object?, bool>>(nameof(ICollection<object>.Remove), 1) : null;
+                var insert = type.IsIList() ? type.GetIListType().GetInstanceMemberInvokeDelegate<Action<object, int, object?>>(nameof(IList.Insert), 2) : null;
+
+                ignored = elements;
+                try
+                {
+                    var enumerator = elements.Children.GetEnumerator();
+                    var instanceEnumerator = instance.GetEnumerator();
+                    while (enumerator.MoveNext() && instanceEnumerator.MoveNext())
+                        try
+                        {
+                            var value = initializeValue(valueType, instanceEnumerator.Current, enumerator.Current.Value, out var ig);
+
+                            ignored = ignored.Remove(enumerator.Current);
+                            if (ig is not null)
+                                ignored = ignored.Append(enumerator.Current.Key, ig);
+
+                            if (!ReferenceEquals(value, instanceEnumerator.Current))
+                                if (insert is not null)
+                                    insert(instance, int.Parse(enumerator.Current.Key!), value);
+                                else if (remove is not null && add is not null)
+                                {
+                                    remove(instance, instanceEnumerator.Current);
+                                    add(instance, value);
+                                }
+                                else
+                                    ignored = ignored.Append(enumerator.Current); // can't added
+                        }
+                        catch (Exception ex)
+                        {
+                            throw InstantiationException.GetCanNotInstantiateException(type, elements, $"[{enumerator.Current.Key}]", ex);
+                        }
+
+
+                    while (enumerator.MoveNext())
+                        if (add is not null)
+                            try
+                            {
+                                add(instance, initializeValue(valueType, null, enumerator.Current.Value, out var ig));
+
+                                ignored = ignored.Remove(enumerator.Current);
+                                if (ig is not null)
+                                    ignored = ignored.Append(enumerator.Current.Key, ig);
+                            }
+                            catch (Exception ex)
+                            {
+                                throw InstantiationException.GetCanNotInstantiateException(type, elements, $"[{enumerator.Current.Key}]", ex);
+                            }
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, elements, ex);
+                }
+
+                ignored = ignored.IsNullOrEmpty() ? null : ignored.Constant();
+                return instance;
+            }
+        }
+
+
+        private static bool SeperateMembersAndElements(IObjectDescription description, out IObjectDescription members, out IObjectDescription elements)
+        {
+            if (description.HasValue)
+            {
+                members = description;
+                elements = ObjectDescriptions.EmptyDescription;
                 return false;
             }
 
-            if (enumValues is not IEnumerable<KeyValuePair<string?, object?>> keyValues)
-            {
-                instanceValues = Array.Empty<KeyValuePair<string?, object?>>();
-                enumerable = enumValues;
-                return true;
-            }
+            var ms = new List<KeyValuePair<string?, IObjectDescription>>();
+            var es = new List<KeyValuePair<int, IObjectDescription>>();
 
-            var values = new List<KeyValuePair<string?, object?>>();
-            var elements = new List<KeyValuePair<string?, object?>>();
-
-            foreach (var pair in keyValues)
-                if (!int.TryParse(pair.Key, out _))
-                    values.Add(pair);
+            foreach (var pair in description.Children)
+                if (int.TryParse(pair.Key, out var i))
+                    es.Add(new KeyValuePair<int, IObjectDescription>(i, pair.Value));
                 else
-                    elements.Add(pair);
+                    ms.Add(pair);
 
-            instanceValues = values;
-            enumerable = elements;
-            return elements.Count > 0;
-        }
-
-        internal static IEnumerable WrapInstantiateValues(Type type, object? instantiateValues, out bool wrapped)
-        {
-            wrapped = false;
-            if (instantiateValues is not IEnumerable enumerable || instantiateValues.GetType().IsString() && !type.Inherit(typeof(IEnumerable<char>)))
+            members = new ConstantObjectDescription(ms);
+            var filledElements = new List<KeyValuePair<string?, IObjectDescription>>();
+            foreach (var e in es.OrderBy(e => e.Key))
             {
-                enumerable = new[] { new KeyValuePair<string?, object?>("0", instantiateValues) };
-                wrapped = true;
+                for (var i = filledElements.Count; i < e.Key; i++)
+                    filledElements.Add(new KeyValuePair<string?, IObjectDescription>(i.ToString(), ObjectDescriptions.NullDescription));
+                filledElements.Add(new KeyValuePair<string?, IObjectDescription>(e.Key.ToString(), e.Value));
             }
-            return enumerable;
+            elements = new ConstantObjectDescription(filledElements);
+
+            return true;
         }
 
-        internal static IEnumerable UnwrapKeyValuePair(IEnumerable enumerable, Type valueType)
+        private static IObjectDescription UnifyEnumerable(IObjectDescription description)
         {
-            if (enumerable is IEnumerable<KeyValuePair<string?, object?>> keyValues)
-            {
-                var unwrap = new List<object?>();
-                foreach (var pair in keyValues)
-                {
-                    if (!int.TryParse(pair.Key, out var i))
-                        return enumerable;
-                    if (i < unwrap.Count)
-                        unwrap[i] = pair.Value;
-                    else
-                    {
-                        for (var j = unwrap.Count; j < i; j++)
-                            unwrap.Add(null);
-                        unwrap.Add(pair.Value);
-                    }
-
-                    if (!valueType.IsKeyValuePair())
-                        continue;
-                    // check if value type is KeyValuePair check underlying object is a KeyValuePair otherwise current KeyValuePair is target
-                    if (pair.Value is not IEnumerable<KeyValuePair<string?, object?>> pairValues)
-                        return enumerable;
-                    var hasKey = false;
-                    var hasValue = false;
-                    foreach (var p in pairValues)
-                    {
-                        if (!hasKey && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
-                            hasKey = true;
-                        else if (!hasValue && string.Equals(p.Key, nameof(KeyValuePair<string?, object?>.Value), StringComparison.InvariantCultureIgnoreCase))
-                            hasValue = true;
-                        else
-                            return enumerable;
-                    }
-                    if (!hasKey || !hasValue)
-                        return enumerable;
-                }
-                enumerable = unwrap;
-            }
-            return enumerable;
+            return ObjectDescriptions.Constant("0", description.IsWrappedValue() ? description.UnwrapValue() : description);
         }
 
 
-        internal delegate object? InstantiateDelegate(Type type, object? instantiateValues, out object? ignoredInstantiateValues);
+        internal delegate object? InstantiateDelegate(Type type, IObjectDescription description, out IObjectDescription? ignored);
 
-        internal delegate object? InitializeDelegate(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues);
+        internal delegate object? InitializeDelegate(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored);
 
 
     }

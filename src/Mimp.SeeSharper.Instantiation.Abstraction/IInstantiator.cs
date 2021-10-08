@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mimp.SeeSharper.ObjectDescription.Abstraction;
+using System;
 
 namespace Mimp.SeeSharper.Instantiation.Abstraction
 {
@@ -10,37 +11,39 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
 
 
         /// <summary>
-        /// Check if <see cref="IInstantiator"/> can instantiate a object of <paramref name="type"/> with the <paramref name="instantiateValues"/>.
+        /// Check if <see cref="IInstantiator"/> can instantiate a object of <paramref name="type"/> with the <paramref name="description"/>.
         /// </summary>
         /// <param name="type"></param>
-        /// <param name="instantiateValues"></param>
+        /// <param name="description"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentNullException"></exception>
-        public bool Instantiable(Type type, object? instantiateValues);
+        public bool Instantiable(Type type, IObjectDescription description);
 
 
         /// <summary>
-        /// Instantiate a object of <paramref name="type"/> with <paramref name="instantiateValues"/>.
-        /// If <see cref="IInstantiator"/> can't use all <paramref name="instantiateValues"/> it will store it to <paramref name="ignoredInstantiateValues"/>.
+        /// Instantiate a object of <paramref name="type"/> with <paramref name="description"/>.
+        /// If <see cref="IInstantiator"/> can't use all <paramref name="description"/> it will store it to <paramref name="ignored"/>.
+        /// If <paramref name="ignored"/> is null it means all of <paramref name="description"/> was used.
         /// </summary>
         /// <param name="type"></param>
-        /// <param name="instantiateValues"></param>
-        /// <param name="ignoredInstantiateValues"></param>
+        /// <param name="description"></param>
+        /// <param name="ignored"></param>
         /// <returns></returns>
         /// <exception cref="InstantiationException"></exception>
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues);
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored);
 
 
         /// <summary>
-        /// Initialize <paramref name="instance"/> with <paramref name="initializeValues"/>.
-        /// If <see cref="IInstantiator"/> can't use all <paramref name="initializeValues"/> it will store it to <paramref name="ignoredInitializeValues"/>.
+        /// Initialize <paramref name="instance"/> with <paramref name="description"/>.
+        /// If <see cref="IInstantiator"/> can't use all <paramref name="description"/> it will store it to <paramref name="ignored"/>.
+        /// If <paramref name="ignored"/> is null it means all of <paramref name="description"/> was used.
         /// </summary>
-        /// <param name="type"></param>
-        /// <param name="initializeValues"></param>
-        /// <param name="ignoredInitializeValues"></param>
-        /// <returns></returns>
+        /// <param name="instance"></param>
+        /// <param name="description"></param>
+        /// <param name="ignored"></param>
+        /// <returns>if <paramref name="instance"/> wis null it return a new instance otherwise <paramref name="instance"/></returns>
         /// <exception cref="InstantiationException"></exception>
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues);
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored);
 
 
     }

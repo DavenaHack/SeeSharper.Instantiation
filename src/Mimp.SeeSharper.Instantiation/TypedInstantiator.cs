@@ -1,4 +1,6 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections.Generic;
@@ -23,74 +25,88 @@ namespace Mimp.SeeSharper.Instantiation
         {
             InstanceInstantiator = instanceInstantiator ?? throw new ArgumentNullException(nameof(instanceInstantiator));
             TypeInstantiator = typeInstantiator ?? throw new ArgumentNullException(nameof(typeInstantiator));
-            if (!TypeInstantiator.Instantiable(typeof(Type), null))
+            if (!TypeInstantiator.Instantiable(typeof(Type), ObjectDescriptions.NullDescription))
                 throw new ArgumentException($@"{TypeInstantiator} can't instantiate a instance of type ""{typeof(Type)}""");
             TypeKey = typeKey ?? throw new ArgumentNullException(nameof(typeKey));
         }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> keyValues)
-                foreach (var pair in keyValues)
+            if (!description.HasValue)
+                foreach (var pair in description.Children)
                     if (string.Equals(pair.Key, TypeKey, StringComparison.InvariantCultureIgnoreCase))
                         try
                         {
-                            var t = (Type?)TypeInstantiator.Instantiate(typeof(Type), pair.Value, out var typeValues);
-                            if (t is not null)
-                            {
-                                TypeInstantiator.Initialize(t, typeValues, out typeValues);
-                                type = t;
-                            }
+                            type = TypeInstantiator.Construct<Type>(pair.Value, out var typeValues) ?? type;
+                            description = description.Remove(pair);
                             break;
                         }
                         catch { }
-            return InstanceInstantiator.Instantiable(type, instantiateValues);
+            return InstanceInstantiator.Instantiable(type, description);
         }
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
-        {
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-			if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
 
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> keyValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
+
+            ignored = description;
+            try
             {
-                var ignoreValues = new List<KeyValuePair<string?, object?>>();
-                foreach (var pair in keyValues)
-                    if (string.Equals(pair.Key, TypeKey, StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        try
-                        {
-                            var t = (Type?)TypeInstantiator.Instantiate(typeof(Type), pair.Value, out var typeValues);
-                            if (t is not null)
+                if (!ignored.HasValue)
+                {
+                    foreach (var child in ignored.Children)
+                        if (string.Equals(child.Key, TypeKey, StringComparison.InvariantCultureIgnoreCase))
+                            try
                             {
-                                TypeInstantiator.Initialize(t, typeValues, out typeValues);
-                                if (!t.InheritOrAssignable(type))
-                                    throw new InstantiationException(type, instantiateValues, null, $@"""{t}"" from {nameof(TypeKey)} have to be assignable to type ""{type}""");
-                                type = t;
+                                var t = TypeInstantiator.Construct<Type>(child.Value, out var ignore);
+                                if (t is not null)
+                                {
+                                    if (!t.InheritOrAssignable(type))
+                                        throw new InstantiationException(type, child.Value, null, $@"""{t}"" have to be assignable to type ""{type}""");
+                                    type = t;
+                                }
+                                ignored = ignored.Remove(child);
+                                if (ignore is not null)
+                                    ignored = ignored.Append(child.Key, ignore);
                             }
-                        }
-                        catch (Exception ex)
-                        {
-                            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, TypeKey, ex);
-                        }
-                    }
-                    else
-                        ignoreValues.Add(pair);
-                instantiateValues = ignoreValues;
-            }
+                            catch (Exception ex)
+                            {
+                                throw InstantiationException.GetCanNotInstantiateException(type, child.Value, TypeKey, ex);
+                            }
+                }
 
-            return InstanceInstantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
+                return InstanceInstantiator.Instantiate(type, ignored.Constant(), out ignored);
+            }
+            catch (Exception ex)
+            {
+                throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+            }
         }
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            InstanceInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            return InstanceInstantiator.Initialize(type, instance, description, out ignored);
         }
 
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mimp.SeeSharper.ObjectDescription.Abstraction;
+using System;
 
 namespace Mimp.SeeSharper.Instantiation.Abstraction
 {
@@ -6,61 +7,39 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
     {
 
 
-        public static T? Instantiate<T>(this IInstantiator instantiator, object? instantiateValues, out object? ignoredInstantiatorValues)
+        public static T? Instantiate<T>(this IInstantiator instantiator, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (instantiator is null)
                 throw new ArgumentNullException(nameof(instantiator));
 
-            return (T?)instantiator.Instantiate(typeof(T), instantiateValues, out ignoredInstantiatorValues);
+            return (T?)instantiator.Instantiate(typeof(T), description, out ignored);
         }
 
-
-        public static object? Construct(this IInstantiator instantiator, Type type, object? instantiateValues, out object? ignoredInstantiateValues, object? initializeValues, out object? ignoredInitializeValues)
-        {
-            if (instantiator is null)
-                throw new ArgumentNullException(nameof(instantiator));
-            if (type is null)
-                throw new ArgumentNullException(nameof(type));
-
-            var instance = instantiator.Instantiate(type, instantiateValues, out ignoredInstantiateValues);
-            instantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            return instance;
-        }
-
-        public static object? Construct(this IInstantiator instantiator, Type type, object? values, out object? ignoredValues)
-        {
-            if (instantiator is null)
-                throw new ArgumentNullException(nameof(instantiator));
-            if (type is null)
-                throw new ArgumentNullException(nameof(type));
-
-            var instance = instantiator.Instantiate(type, values, out ignoredValues);
-            instantiator.Initialize(instance, ignoredValues, out ignoredValues);
-            return instance;
-        }
-
-        public static object? Construct(this IInstantiator instantiator, Type type, object? values) =>
-            instantiator.Construct(type, values, out _);
-
-
-        public static T? Construct<T>(this IInstantiator instantiator, object? instantiateValues, out object? ignoredInstantiateValues, object? initializeValues, out object? ignoredInitializeValues)
+        public static T? Initialize<T>(this IInstantiator instantiator, T? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (instantiator is null)
                 throw new ArgumentNullException(nameof(instantiator));
 
-            return (T?)instantiator.Construct(typeof(T), instantiateValues, out ignoredInstantiateValues, initializeValues, out ignoredInitializeValues);
+            return (T?)instantiator.Initialize(typeof(T), instance, description, out ignored);
         }
 
-        public static T? Construct<T>(this IInstantiator instantiator, object? values, out object? ignoredValues)
+
+        public static object? Construct(this IInstantiator instantiator, Type type,
+            IObjectDescription instantiate, out IObjectDescription? ignoredInstantiate,
+            IObjectDescription initialize, out IObjectDescription? ignoredInitialize)
         {
             if (instantiator is null)
                 throw new ArgumentNullException(nameof(instantiator));
 
-            return (T?)instantiator.Construct(typeof(T), values, out ignoredValues);
+            var instance = instantiator.Instantiate(type, instantiate, out ignoredInstantiate);
+            return instantiator.Initialize(type, instance, initialize, out ignoredInitialize);
         }
 
-        public static T? Construct<T>(this IInstantiator instantiator, object? values) =>
-            instantiator.Construct<T>(values, out _);
+
+        public static T? Construct<T>(this IInstantiator instantiator,
+                IObjectDescription instantiate, out IObjectDescription? ignoredInstantiate,
+                IObjectDescription initialize, out IObjectDescription? ignoredInitialize
+            ) => (T?)instantiator.Construct(typeof(T), instantiate, out ignoredInstantiate, initialize, out ignoredInitialize);
 
 
     }

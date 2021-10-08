@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
-using System.Collections.Generic;
+using Mimp.SeeSharper.ObjectDescription;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -14,18 +14,18 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new DecimalInstantiator();
 
-            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>("12345.6789"));
-            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>(" 12345.6789 "));
-            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>(new Dictionary<string, object?> { { "", "12345.6789" } }));
+            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>(ObjectDescriptions.Constant("12345.6789")));
+            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>(ObjectDescriptions.Constant(" 12345.6789 ")));
+            Assert.AreEqual(12345.6789m, instantiator.Construct<decimal>(ObjectDescriptions.Constant("12345.6789").WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<decimal>("abc");
+                instantiator.Construct<decimal>(ObjectDescriptions.Constant("abc"));
             });
 
-            Assert.IsNull(instantiator.Construct<decimal?>(""));
-            Assert.IsNull(instantiator.Construct<decimal?>(null));
-            Assert.IsNull(instantiator.Construct<decimal?>(new Dictionary<string, object?> { { "", "" } }));
+            Assert.IsNull(instantiator.Construct<decimal?>(ObjectDescriptions.Constant("")));
+            Assert.IsNull(instantiator.Construct<decimal?>(ObjectDescriptions.NullDescription));
+            Assert.IsNull(instantiator.Construct<decimal?>(ObjectDescriptions.Constant("").WrapValue()));
         }
 
 

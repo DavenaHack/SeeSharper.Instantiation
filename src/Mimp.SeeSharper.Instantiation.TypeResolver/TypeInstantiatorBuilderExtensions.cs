@@ -12,6 +12,10 @@ namespace Mimp.SeeSharper.Instantiation.TypeResolver
         {
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
+            if (resolver is null)
+                throw new ArgumentNullException(nameof(resolver));
+            if (typeKey is null)
+                throw new ArgumentNullException(nameof(typeKey));
 
             return builder.SetRoot(root => new TypedInstantiator(root, new ResolveTypeInstantiator(resolver), typeKey));
         }
@@ -21,6 +25,8 @@ namespace Mimp.SeeSharper.Instantiation.TypeResolver
         {
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
+            if (resolver is null)
+                throw new ArgumentNullException(nameof(resolver));
 
             return builder.Add(root => new[] { new ResolveTypeInstantiator(resolver) });
         }

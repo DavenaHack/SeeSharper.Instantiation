@@ -1,9 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Mimp.SeeSharper.Instantiation.Abstraction;
 using Mimp.SeeSharper.Instantiation.TypeResolver;
+using Mimp.SeeSharper.ObjectDescription;
 using Mimp.SeeSharper.TypeResolver;
-using System.Collections.Generic;
-using SysType = System.Type;
+using System;
 
 namespace Mimp.SeeSharper.Instantiation.Test
 {
@@ -17,12 +17,12 @@ namespace Mimp.SeeSharper.Instantiation.Test
         {
             var instantiator = new ResolveTypeInstantiator(new DelegateTypeResolver());
 
-            Assert.AreEqual(typeof(string), instantiator.Construct<SysType>(typeof(string).FullName));
-            Assert.AreEqual(typeof(string), instantiator.Construct<SysType>(new Dictionary<string, object?> { { "", typeof(string).FullName } }));
+            Assert.AreEqual(typeof(string), instantiator.Construct<Type>(ObjectDescriptions.Constant(typeof(string).FullName)));
+            Assert.AreEqual(typeof(string), instantiator.Construct<Type>(ObjectDescriptions.Constant(typeof(string).FullName).WrapValue()));
 
             Assert.ThrowsException<InstantiationException>(() =>
             {
-                instantiator.Construct<SysType>("abc");
+                instantiator.Construct<Type>(ObjectDescriptions.Constant("abc"));
             });
         }
 

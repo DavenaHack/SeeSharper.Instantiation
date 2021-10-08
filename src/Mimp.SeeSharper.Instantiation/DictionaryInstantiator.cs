@@ -1,4 +1,5 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
 using System.Collections;
@@ -29,61 +30,66 @@ namespace Mimp.SeeSharper.Instantiation
             : this(instanceInstantiator, new KeyValuePairInstantiator(keyInstantiator, valueInstantiator)) { }
 
 
-        public bool Instantiable(Type type, object? instantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
             return type == typeof(IDictionary)
                 || type == typeof(IDictionary<,>)
                 || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>)
-                || type.IsIDictionary() && InstanceInstantiator.Instantiable(type, instantiateValues);
+                || type.IsIDictionary() && InstanceInstantiator.Instantiable(type, description);
         }
 
 
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (type is null)
                 throw new ArgumentNullException(nameof(type));
-            if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
             if (type == typeof(IDictionary) || type == typeof(IDictionary<,>) || type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IDictionary<,>))
             {
                 type = typeof(Dictionary<,>).MakeGenericType(type.GetIDictionaryKeyValueType()?.ToArray() ?? new[] { typeof(object), typeof(object) });
-                if (EnumerableInstantiator.TryInstantiateEnumerableConstructor(type, instantiateValues, InstantiatePair, out ignoredInstantiateValues, out var inits))
+                if (EnumerableInstantiator.TryInstantiateEnumerableConstructor(type, description, InstantiatePair, out ignored, out var inits))
                     return inits;
             }
 
-            return EnumerableInstantiator.Instantiate(type, instantiateValues, InstanceInstantiator, InstantiatePair, out ignoredInstantiateValues);
+            return EnumerableInstantiator.Instantiate(type, description, InstanceInstantiator, InstantiatePair, out ignored);
         }
 
-        protected virtual object? InstantiatePair(Type type, object? instantiateValues, out object? ignoredInstantiateValues) =>
-            PairInstantiator.Construct(type, instantiateValues, out ignoredInstantiateValues);
+        protected virtual object? InstantiatePair(Type type, IObjectDescription description, out IObjectDescription? ignored) =>
+            PairInstantiator.Construct(type, description, out ignored);
+        
 
-
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
             if (instance is null)
-            {
-                ignoredInitializeValues = initializeValues;
-                return;
-            }
+                return Instantiate(type, description, out ignored);
 
-            var type = instance.GetType();
-            if (!Instantiable(type, null))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            type = instance.GetType();
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            EnumerableInstantiator.Initialize(type, (IEnumerable)instance, initializeValues, InstanceInstantiator, InitializePair, out ignoredInitializeValues);
+            return EnumerableInstantiator.Initialize(type, (IEnumerable)instance, description, InstanceInstantiator, InitializePair, out ignored);
         }
 
-        protected virtual object? InitializePair(Type type, object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        protected virtual object? InitializePair(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (instance is null)
-                return PairInstantiator.Construct(type, initializeValues, out ignoredInitializeValues);
+                return PairInstantiator.Construct(type, description, out ignored);
 
-            PairInstantiator.Initialize(instance, initializeValues, out ignoredInitializeValues);
-            return instance;
+            return PairInstantiator.Initialize(instance, description, out ignored);
         }
 
 

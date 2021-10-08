@@ -1,9 +1,9 @@
 ﻿using Mimp.SeeSharper.Instantiation.Abstraction;
+using Mimp.SeeSharper.ObjectDescription;
+using Mimp.SeeSharper.ObjectDescription.Abstraction;
 using Mimp.SeeSharper.Reflection;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 
 namespace Mimp.SeeSharper.Instantiation
 {
@@ -32,97 +32,106 @@ namespace Mimp.SeeSharper.Instantiation
             : this(CultureInfo.InvariantCulture) { }
 
 
-        public bool Instantiable(Type type, object? instantiateValues) 
-		{
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-
-			return type.IsAssignableFrom(typeof(sbyte));
-		}
-
-
-        public object? Instantiate(Type type, object? instantiateValues, out object? ignoredInstantiateValues)
+        public bool Instantiable(Type type, IObjectDescription description)
         {
-			if (type is null)
-				throw new ArgumentNullException(nameof(type));
-			if (!Instantiable(type, instantiateValues))
-                throw InstantiationException.GetNotMatchingTypeException(this, type);
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
 
-            if (instantiateValues is null)
-            {
-                ignoredInstantiateValues = null;
-                return type.Default();
-            }
-
-            if (instantiateValues is sbyte v)
-            {
-                ignoredInstantiateValues = null;
-                return v;
-            }
-
-            if (instantiateValues is string s)
-                return InstantiateFromString(type, s, instantiateValues, out ignoredInstantiateValues);
-
-			var valueType = instantiateValues.GetType();
-            if (valueType.IsNumber())
-            {
-                ignoredInstantiateValues = null;
-                return (sbyte)instantiateValues;
-            }
-
-            if (instantiateValues is IEnumerable<KeyValuePair<string?, object?>> enumerable)
-            {
-                var i = 0;
-                object? value = null;
-                foreach (var pair in enumerable)
-                {
-                    if (i++ > 1)
-                        break;
-                    if (!string.IsNullOrEmpty(pair.Key))
-                    {
-                        i++;
-                        break;
-                    }
-                    value = pair.Value;
-                }
-                if (i < 2)
-                    try
-                    {
-                        return Instantiate(type, i < 1 ? null : value, out ignoredInstantiateValues);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
-                    }
-            }
-
-            throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues);
+            return type.IsAssignableFrom(typeof(sbyte));
         }
 
-        protected virtual object? InstantiateFromString(Type type, string value, object? instantiateValues, out object? ignoredInstantiateValues)
+
+        public object? Instantiate(Type type, IObjectDescription description, out IObjectDescription? ignored)
+        {
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+            if (!Instantiable(type, description))
+                throw InstantiationException.GetNotMatchingTypeException(this, type, description);
+
+            if (description.HasValue)
+            {
+                if (description.Value is null)
+                {
+                    ignored = null;
+                    return type.Default();
+                }
+
+                if (description.Value is sbyte v)
+                {
+                    ignored = null;
+                    return v;
+                }
+
+                if (description.Value is string s)
+                    return InstantiateFromString(type, s, description, out ignored);
+
+                var valueType = description.Value.GetType();
+                if (valueType.IsNumber())
+                {
+                    ignored = null;
+                    return (sbyte)description.Value;
+                }
+
+            }
+            else if (description.IsEmpty())
+                try
+                {
+                    return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+            else if (description.IsWrappedValue())
+                try
+                {
+                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                }
+                catch (Exception ex)
+                {
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
+                }
+
+            throw InstantiationException.GetCanNotInstantiateException(type, description);
+        }
+
+        protected virtual object? InstantiateFromString(Type type, string value, IObjectDescription description, out IObjectDescription? ignored)
         {
             if (string.IsNullOrWhiteSpace(value) && type.IsNullable())
             {
-                ignoredInstantiateValues = null;
+                ignored = null;
                 return type.Default();
             }
             else
                 try
                 {
                     var result = sbyte.Parse(value, NumberStyles, FormatProvider);
-                    ignoredInstantiateValues = null;
+                    ignored = null;
                     return result;
                 }
                 catch (Exception ex)
                 {
-                    throw InstantiationException.GetCanNotInstantiateException(type, instantiateValues, ex);
+                    throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                 }
         }
 
 
-        public void Initialize(object? instance, object? initializeValues, out object? ignoredInitializeValues)
+        public object? Initialize(Type type, object? instance, IObjectDescription description, out IObjectDescription? ignored)
         {
-            ignoredInitializeValues = initializeValues;
+            if (type is null)
+                throw new ArgumentNullException(nameof(type));
+            if (description is null)
+                throw new ArgumentNullException(nameof(description));
+
+            if (instance is null)
+                return Instantiate(type, description, out ignored);
+
+            ignored = description.IsNullOrEmpty() ? null : description;
+            return instance;
         }
 
 

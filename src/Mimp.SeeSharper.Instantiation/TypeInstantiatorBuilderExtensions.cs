@@ -11,6 +11,10 @@ namespace Mimp.SeeSharper.Instantiation
         {
             if (builder is null)
                 throw new ArgumentNullException(nameof(builder));
+            if (typeInstantiator is null)
+                throw new ArgumentNullException(nameof(typeInstantiator));
+            if (typeKey is null)
+                throw new ArgumentNullException(nameof(typeKey));
 
             return builder.SetRoot(root => new TypedInstantiator(root, typeInstantiator, typeKey));
         }

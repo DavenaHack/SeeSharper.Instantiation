@@ -33,10 +33,14 @@
   
   <ItemGroup Condition="'$(Configuration)' == 'Release'">
     <PackageReference Include="Mimp.SeeSharper.Reflection" Version="[1.0.0,]" />
+    <PackageReference Include="Mimp.SeeSharper.ObjectDescription" Version="[1.0.0,]" />
+    <PackageReference Include="Mimp.SeeSharper.ObjectDescription.Abstraction" Version="[1.0.0,]" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <ProjectReference Include="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" />
+    <ProjectReference Include="..\..\libs\ObjectDescription\src\Mimp.SeeSharper.ObjectDescription\Mimp.SeeSharper.ObjectDescription.csproj" />
+    <ProjectReference Include="..\..\libs\ObjectDescription\src\Mimp.SeeSharper.ObjectDescription.Abstraction\Mimp.SeeSharper.ObjectDescription.Abstraction.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,6 +49,8 @@
 
   <Target Name="ResolveDependencies" BeforeTargets="BeforeResolveReferences" Condition="'$(Configuration)' == 'Debug'">
     <MSBuild Projects="..\..\libs\Reflection\src\Mimp.SeeSharper.Reflection\Mimp.SeeSharper.Reflection.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
+    <MSBuild Projects="..\..\libs\ObjectDescription\src\Mimp.SeeSharper.ObjectDescription\Mimp.SeeSharper.ObjectDescription.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
+    <MSBuild Projects="..\..\libs\ObjectDescription\src\Mimp.SeeSharper.ObjectDescription.Abstraction\Mimp.SeeSharper.ObjectDescription.Abstraction.csproj" Targets="Restore;Build" Properties="Configuration=Debug" />
   </Target>
 
 </Project>
