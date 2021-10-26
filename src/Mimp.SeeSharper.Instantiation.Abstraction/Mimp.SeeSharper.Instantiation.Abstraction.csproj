@@ -4,7 +4,7 @@
     <TargetFrameworks>net5.0;netcoreapp3.1;netcoreapp2.1;netstandard2.1;net48;net461</TargetFrameworks>
     <LangVersion>latest</LangVersion>
     <AssemblyName>Mimp.SeeSharper.Instantiation.Abstraction</AssemblyName>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
     <AssemblyTitle>SeeSharper Instantiation Abstraction</AssemblyTitle>
     <Description>SeeSharper Instantiation is a construct to instantiate objects.</Description>
     <Authors>SeeSharper Contributors</Authors>
