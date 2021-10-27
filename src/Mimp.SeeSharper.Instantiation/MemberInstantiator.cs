@@ -96,11 +96,12 @@ namespace Mimp.SeeSharper.Instantiation
             if (instance is null)
                 return Instantiate(type, description, out ignored);
 
+            var constDesc = description.Constant();
             type = instance.GetType();
-            if (!Instantiable(type, description))
+            if (!Instantiable(type, constDesc))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            InitMembers(instance, description,
+            InitMembers(instance, constDesc,
                 (instance, property, description) =>
                 {
                     var old = property.GetValue(instance);

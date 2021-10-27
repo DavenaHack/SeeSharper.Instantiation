@@ -52,16 +52,17 @@ namespace Mimp.SeeSharper.Instantiation
 
             var types = type.GetKeyValuePairKeyValueType()!.ToArray();
 
-            if (description.HasValue)
+            var constDesc = description;
+            if (constDesc.HasValue)
             {
-                if (description.Value is null)
+                if (constDesc.Value is null)
                 {
                     ignored = null;
                     return type.Default();
                 }
 
-                var initType = description.Value.GetType();
-                dynamic dyn = description.Value;
+                var initType = constDesc.Value.GetType();
+                dynamic dyn = constDesc.Value;
                 if (initType.IsKeyValuePair())
                 {
                     var result = Create(ObjectDescriptions.Constant((object?)dyn.Key), out var keyIgnore,
@@ -76,7 +77,7 @@ namespace Mimp.SeeSharper.Instantiation
                     return result;
                 }
             }
-            else if (description.IsEmpty())
+            else if (constDesc.IsEmpty())
                 try
                 {
                     return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
@@ -85,10 +86,10 @@ namespace Mimp.SeeSharper.Instantiation
                 {
                     throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                 }
-            else if (description.IsWrappedValue())
+            else if (constDesc.IsWrappedValue())
                 try
                 {
-                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                    return Instantiate(type, constDesc.UnwrapValue(), out ignored);
                 }
                 catch (Exception ex)
                 {
@@ -99,7 +100,7 @@ namespace Mimp.SeeSharper.Instantiation
                 KeyValuePair<string?, IObjectDescription>? key = null;
                 KeyValuePair<string?, IObjectDescription>? value = null;
 
-                foreach (var c in description.Children)
+                foreach (var c in constDesc.Children)
                 {
                     if (key is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
                     {
@@ -192,11 +193,12 @@ namespace Mimp.SeeSharper.Instantiation
             if (instance is null)
                 return Instantiate(type, description, out ignored);
 
+            var constDesc = description.Constant();
             type = instance.GetType();
-            if (!Instantiable(type, description))
+            if (!Instantiable(type, constDesc))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (description.IsNullOrEmpty())
+            if (constDesc.IsNullOrEmpty())
             {
                 ignored = null;
                 return instance;
@@ -204,10 +206,10 @@ namespace Mimp.SeeSharper.Instantiation
 
             var types = type.GetKeyValuePairKeyValueType()!.ToArray();
 
-            if (description.HasValue)
+            if (constDesc.HasValue)
             {
-                var initType = description.GetType();
-                dynamic pair = description;
+                var initType = constDesc.GetType();
+                dynamic pair = constDesc;
 
                 if (initType.IsKeyValuePair())
                 {
@@ -223,10 +225,10 @@ namespace Mimp.SeeSharper.Instantiation
                     return instance;
                 }
             }
-            else if (description.IsWrappedValue())
+            else if (constDesc.IsWrappedValue())
                 try
                 {
-                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                    return Instantiate(type, constDesc.UnwrapValue(), out ignored);
                 }
                 catch (Exception ex)
                 {
@@ -237,7 +239,7 @@ namespace Mimp.SeeSharper.Instantiation
                 KeyValuePair<string?, IObjectDescription>? key = null;
                 KeyValuePair<string?, IObjectDescription>? value = null;
 
-                foreach (var c in description.Children)
+                foreach (var c in constDesc.Children)
                 {
                     if (key is null && string.Equals(c.Key, nameof(KeyValuePair<string?, object?>.Key), StringComparison.InvariantCultureIgnoreCase))
                     {

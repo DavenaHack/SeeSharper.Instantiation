@@ -34,9 +34,10 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, description))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (description.HasValue)
+            var constDesc = description.Constant();
+            if (constDesc.HasValue)
             {
-                if (description.Value is null)
+                if (constDesc.Value is null)
                 {
                     ignored = null;
                     if (type.IsNullable())
@@ -45,7 +46,7 @@ namespace Mimp.SeeSharper.Instantiation
                     return values.Length > 0 ? values.GetValue(0) : type.Default();
                 }
 
-                if (description.Value is string s)
+                if (constDesc.Value is string s)
                     try
                     {
                         ignored = null;
@@ -57,15 +58,15 @@ namespace Mimp.SeeSharper.Instantiation
                         throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                     }
 
-                var valueType = description.Value.GetType();
+                var valueType = constDesc.Value.GetType();
                 if (valueType.IsNumber() || valueType.IsEnum)
                 {
                     ignored = null;
-                    return type.GetCastFunc(type)(description.Value);
+                    return type.GetCastFunc(type)(constDesc.Value);
                 }
 
             }
-            else if (description.IsEmpty())
+            else if (constDesc.IsEmpty())
                 try
                 {
                     return Instantiate(type, ObjectDescriptions.NullDescription, out ignored);
@@ -74,10 +75,10 @@ namespace Mimp.SeeSharper.Instantiation
                 {
                     throw InstantiationException.GetCanNotInstantiateException(type, description, ex);
                 }
-            else if (description.IsWrappedValue())
+            else if (constDesc.IsWrappedValue())
                 try
                 {
-                    return Instantiate(type, description.UnwrapValue(), out ignored);
+                    return Instantiate(type, constDesc.UnwrapValue(), out ignored);
                 }
                 catch (Exception ex)
                 {

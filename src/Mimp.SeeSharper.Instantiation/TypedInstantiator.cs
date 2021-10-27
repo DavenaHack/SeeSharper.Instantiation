@@ -61,7 +61,7 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, description))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            ignored = description;
+            ignored = description.Constant();
             try
             {
                 if (!ignored.HasValue)
@@ -80,6 +80,8 @@ namespace Mimp.SeeSharper.Instantiation
                                 ignored = ignored.Remove(child);
                                 if (ignore is not null)
                                     ignored = ignored.Append(child.Key, ignore);
+
+                                break;
                             }
                             catch (Exception ex)
                             {

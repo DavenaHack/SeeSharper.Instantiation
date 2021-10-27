@@ -42,15 +42,16 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, description))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
+            var constDesc = description.Constant();
             try
             {
-                return Instantiator.Instantiate(type.GetNullableValueType()!, description, out ignored);
+                return Instantiator.Instantiate(type.GetNullableValueType()!, constDesc, out ignored);
             }
             catch
             {
-                description = description.IsWrappedValue() ? description.UnwrapValue() : description;
-                if (description.IsNullOrEmpty() ||
-                    description.HasValue && description.Value is string s && string.IsNullOrWhiteSpace(s))
+                constDesc = constDesc.IsWrappedValue() ? constDesc.UnwrapValue() : constDesc;
+                if (constDesc.IsNullOrEmpty() ||
+                    constDesc.HasValue && constDesc.Value is string s && string.IsNullOrWhiteSpace(s))
                 {
                     ignored = null;
                     return type.Default();
