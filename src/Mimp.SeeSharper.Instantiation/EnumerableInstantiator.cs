@@ -96,7 +96,8 @@ namespace Mimp.SeeSharper.Instantiation
             IObjectDescription description, InstantiateDelegate instantiateValue,
             out IObjectDescription? ignored, out IEnumerable? instance)
         {
-            if (description.IsNull())
+            var constDesc = description.Constant();
+            if (constDesc.IsNull())
             {
                 instance = null;
                 ignored = null;
@@ -130,7 +131,7 @@ namespace Mimp.SeeSharper.Instantiation
             var exceptions = new List<Exception>();
             try
             {
-                if (SeperateMembersAndElements(description, out var members, out var elements)
+                if (SeperateMembersAndElements(constDesc, out var members, out var elements)
                     && members.IsNullOrEmpty())
                     return Create(valueType, elements, out ignored, out instance);
             }
@@ -140,7 +141,7 @@ namespace Mimp.SeeSharper.Instantiation
             }
             try
             {
-                if (SeperateMembersAndElements(UnifyEnumerable(description), out var members, out var elements)
+                if (SeperateMembersAndElements(UnifyEnumerable(constDesc), out var members, out var elements)
                     && members.IsNullOrEmpty())
                     return Create(valueType, elements, out ignored, out instance);
             }
@@ -189,8 +190,9 @@ namespace Mimp.SeeSharper.Instantiation
         internal static object? Instantiate(Type type, IObjectDescription description,
             IInstantiator instanceInstantiator, InstantiateDelegate instantiateValue, out IObjectDescription? ignored)
         {
+            var constDesc = description.Constant();
             Exception? originEx = null;
-            if (SeperateMembersAndElements(description, out var members, out var elements))
+            if (SeperateMembersAndElements(constDesc, out var members, out var elements))
                 try
                 {
                     var instance = (IEnumerable?)instanceInstantiator.Instantiate(type, members, out ignored);
@@ -213,7 +215,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             try
             {
-                return (IEnumerable?)instanceInstantiator.Instantiate(type, description, out ignored);
+                return (IEnumerable?)instanceInstantiator.Instantiate(type, constDesc, out ignored);
             }
             catch (Exception ex)
             {
@@ -267,8 +269,9 @@ namespace Mimp.SeeSharper.Instantiation
         internal static IEnumerable Initialize(Type type, IEnumerable instance, IObjectDescription description,
             IInstantiator instanceInstantiator, InitializeDelegate initializeValue, out IObjectDescription? ignored)
         {
+            var constDesc = description.Constant();
             Exception? originEx = null;
-            if (SeperateMembersAndElements(description, out var members, out var elements))
+            if (SeperateMembersAndElements(constDesc, out var members, out var elements))
                 try
                 {
                     instance = (IEnumerable)instanceInstantiator.Initialize(type, instance, members, out ignored)!;
@@ -286,7 +289,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             try
             {
-                return (IEnumerable)instanceInstantiator.Initialize(type, instance, description, out ignored)!;
+                return (IEnumerable)instanceInstantiator.Initialize(type, instance, constDesc, out ignored)!;
             }
             catch (Exception ex)
             {

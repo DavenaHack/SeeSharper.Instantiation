@@ -54,12 +54,20 @@ namespace Mimp.SeeSharper.Instantiation
             if (!Instantiable(type, description))
                 throw InstantiationException.GetNotMatchingTypeException(this, type, description);
 
-            if (description.IsNull())
-                return GetDefault(type, description, out ignored);
-
-            var constructors = GetConstructors(type, description, out ignored);
             var exceptions = new List<Exception>();
 
+            var constDesc = description.Constant();
+            if (constDesc.IsNull())
+                try
+                {
+                    return GetDefault(type, constDesc, out ignored);
+                }
+                catch (Exception ex)
+                {
+                    exceptions.Add(ex);
+                }
+
+            var constructors = GetConstructors(type, constDesc, out ignored);
             foreach (var constructor in constructors)
                 try
                 {
@@ -75,7 +83,7 @@ namespace Mimp.SeeSharper.Instantiation
 
             try
             {
-                var def = GetDefault(type, description, out ignored);
+                var def = GetDefault(type, constDesc, out ignored);
                 if (def is null)
                     return def;
                 InstantiateInstance(def, ignored ?? ObjectDescriptions.EmptyDescription, out ignored);

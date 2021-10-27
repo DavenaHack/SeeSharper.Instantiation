@@ -159,7 +159,7 @@ namespace Mimp.SeeSharper.Instantiation.Abstraction
 
 
         public static InstantiationException GetUsedNotAllException(Type type, IObjectDescription description, IObjectDescription ignored) =>
-            new InstantiationException(type, description, GetUsedNotAllMessage(type, description, ignored));
+            new InstantiationException(type, description, null, GetUsedNotAllMessage(type, description, ignored));
 
 
         public static string GetCanNotInstantiateParameterMessage(ConstructorInfo constructor, ParameterInfo parameter) =>
